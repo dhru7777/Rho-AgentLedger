@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Home · AgentLedger</title>
+  <title>Agent dashboard · Rho Capital</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=rho2" />
+  <link rel="stylesheet" href="/styles.css?v=rho5" />
 </head>
 <body class="rho-dash">
   <aside class="rho-side">
@@ -43,8 +43,7 @@
   <div class="rho-main">
     <header class="rho-top">
       <div class="rho-top-left">
-        <span class="rho-pill" id="rhoPill">rho · fixture</span>
-        <span class="rho-pill" id="modePill">adapter</span>
+        <span class="rho-pill" id="rhoPill">Rho</span>
       </div>
       <div class="rho-top-actions">
         <a class="rho-btn" href="/architecture">Architecture</a>
@@ -60,15 +59,15 @@
       <section class="rho-pane" id="pane-identity" hidden></section>
       <section class="rho-pane" id="pane-recon" hidden></section>
     </div>
-    <div class="rho-chat">
+    <div class="rho-chat" id="rhoChat">
       <div class="rho-chat-log" id="chatLog"></div>
       <form class="rho-chat-form" id="chatForm">
-        <input id="chatInput" autocomplete="off" placeholder="Ask the scoreboard — who should get more budget, what’s Shopping’s credit, any unmatched claims?" />
+        <input id="chatInput" autocomplete="off" placeholder="Ask about credit, budget, or unmatched claims" />
         <button type="submit">Ask</button>
       </form>
     </div>
   </div>
 
-  <script src="/ledger.js?v=rho2"></script>
+  <script src="/ledger.js?v=rho5"></script>
 </body>
 </html>

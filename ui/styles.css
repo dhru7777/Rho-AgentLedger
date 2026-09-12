@@ -897,16 +897,16 @@ button.arch-btn { appearance: none; }
 }
 
 html:has(body.rho-dash) {
-  height: auto;
-  overflow: auto;
+  height: 100%;
+  overflow: hidden;
   background: #f4f5f4;
 }
 body.rho-dash {
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
-  height: auto;
-  min-height: 100dvh;
-  overflow: visible;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background: #f4f5f4;
   color: #171717;
   font-size: 14px;
@@ -965,11 +965,18 @@ body.rho-dash {
 .rho-nav-btn.active { background: #ecece8; color: #111; font-weight: 600; }
 .rho-main {
   min-width: 0;
+  min-height: 0;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  overflow: hidden;
 }
-.rho-scroll { flex: 1; min-height: 0; overflow: auto; }
+.rho-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 8px;
+}
 .rho-top {
   display: flex;
   justify-content: space-between;
@@ -1005,16 +1012,17 @@ body.rho-dash {
 .rho-kicker { font-size: 13px; color: #6f6f6a; margin-bottom: 6px; }
 .rho-headline {
   font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(28px, 3.4vw, 42px);
+  font-size: clamp(32px, 3.6vw, 48px);
   font-weight: 400;
   letter-spacing: -0.03em;
-  line-height: 1.15;
-  max-width: 18ch;
-  margin: 0 0 28px;
+  line-height: 1.12;
+  max-width: 22ch;
+  margin: 0 0 8px;
 }
 .rho-h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 8px; }
 .rho-h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
 .rho-lede { color: #6f6f6a; max-width: 62ch; margin: 0 0 18px; }
+.rho-headline + .rho-lede { margin: 0 0 28px; }
 .rho-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1144,13 +1152,62 @@ body.rho-dash {
   padding: 16px 18px 14px;
 }
 .rho-file h3 { font-size: 22px; letter-spacing: -0.03em; margin: 4px 0 12px; }
-.rho-file-top { display: flex; justify-content: space-between; gap: 12px; }
+.rho-file-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .rho-file-score { font-size: 36px; font-weight: 600; letter-spacing: -0.04em; }
 .rho-cs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .rho-c span { display: block; font-size: 11px; color: #8a8a85; }
 .rho-c strong { font-size: 18px; }
 .rho-c p { font-size: 12px; color: #6f6f6a; margin-top: 4px; }
-.rho-thesis { color: #6f6f6a; margin-top: 12px; font-size: 13px; }
+.rho-4c {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 6px 0 16px;
+}
+.rho-4c-card {
+  background: #fafafa;
+  border: 1px solid #ecece8;
+  border-radius: 14px;
+  padding: 14px 16px 12px;
+}
+.rho-4c-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.rho-4c-head span { font-size: 13px; font-weight: 600; color: #171717; }
+.rho-4c-head strong { font-size: 28px; font-weight: 600; letter-spacing: -0.04em; }
+.rho-4c-facts { margin: 0; }
+.rho-4c-fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0 0;
+  margin-top: 8px;
+  border-top: 1px solid #ecece8;
+  font-size: 13px;
+}
+.rho-4c-fact dt { color: #8a8a85; font-weight: 500; }
+.rho-4c-fact dd { margin: 0; font-weight: 600; text-align: right; }
+.rho-file-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.rho-callout {
+  background: #111;
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.rho-callout strong { font-weight: 600; }
+.rho-thesis { color: #6f6f6a; margin-top: 0; font-size: 13px; }
 .rho-file-pnl { margin-top: 10px; font-size: 12px; color: #8a8a85; }
 .rho-link { display: inline-block; margin-top: 10px; font-weight: 600; color: #171717; }
 
@@ -1204,53 +1261,101 @@ body.rho-dash {
 .fico-readout span { font-size: 12px; color: #6f6f6a; font-weight: 600; }
 
 .rho-chat {
-  border-top: 1px solid #ecece8;
-  background: #fff;
-  padding: 10px 28px 14px;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 40;
+  background: linear-gradient(180deg, rgba(244, 245, 244, 0) 0%, #f4f5f4 18px, #f4f5f4 100%);
+  border-top: 0;
+  padding: 18px 28px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.rho-chat::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -28px;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, #f4f5f4);
+  pointer-events: none;
 }
 .rho-chat-log {
-  max-height: 140px;
+  display: none;
+  max-height: min(28vh, 240px);
   overflow: auto;
-  display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #ecece8;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.04);
+}
+.rho-chat.open .rho-chat-log,
+.rho-chat-log:not(:empty) {
+  display: flex;
 }
 .rho-chat-msg {
   max-width: 72ch;
   padding: 8px 12px;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 13px;
   line-height: 1.45;
   white-space: pre-wrap;
 }
-.rho-chat-msg.user { align-self: flex-end; background: #111; color: #fff; }
-.rho-chat-msg.assistant { align-self: flex-start; background: #f3f3f0; }
+.rho-chat-msg.user { align-self: flex-end; background: #111; color: #fff; border-bottom-right-radius: 4px; }
+.rho-chat-msg.assistant { align-self: flex-start; background: #f3f3f0; border-bottom-left-radius: 4px; }
 .rho-chat-msg.pending { color: #8a8a85; }
-.rho-chat-form { display: flex; gap: 8px; }
+.rho-chat-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #ecece8;
+  border-radius: 18px;
+  padding: 6px 6px 6px 14px;
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.06);
+}
 .rho-chat-form input {
   flex: 1;
+  min-width: 0;
   font: inherit;
-  border: 1px solid #e4e4e0;
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #fafafa;
+  font-size: 14px;
+  border: 0;
+  outline: none;
+  padding: 10px 4px;
+  background: transparent;
 }
+.rho-chat-form input::placeholder { color: #8a8a85; }
 .rho-chat-form button {
   font: inherit;
   font-weight: 600;
   border: 0;
   background: #111;
   color: #fff;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 10px 16px;
   cursor: pointer;
+  flex-shrink: 0;
 }
+.rho-chat-form button:hover { background: #2a2a2a; }
 
 @media (max-width: 960px) {
-  body.rho-dash { grid-template-columns: 1fr; }
-  .rho-side { position: relative; height: auto; border-right: 0; border-bottom: 1px solid #ecece8; }
-  .rho-split, .rho-cs, .fico-row { grid-template-columns: 1fr; }
+  body.rho-dash {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .rho-side {
+    position: relative;
+    height: auto;
+    max-height: 32vh;
+    border-right: 0;
+    border-bottom: 1px solid #ecece8;
+  }
+  .rho-main { height: auto; min-height: 0; }
+  .rho-split, .rho-cs, .fico-row, .rho-4c, .rho-file-metrics { grid-template-columns: 1fr; }
   .rho-pane { padding: 16px; }
-  .rho-chat { padding: 10px 16px 14px; }
+  .rho-chat { padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
 }

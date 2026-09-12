@@ -155,8 +155,9 @@ function renderHome() {
   const shopping = (score.credit || []).find((a) => a.agentId === "sales");
   const merchant = score.merchant;
   document.getElementById("pane-home").innerHTML = `
-    <p class="rho-kicker">Home</p>
-    <h1 class="rho-headline">${esc(score.headline || "Commerce claimed it. You don't underwrite from a storefront anymore.")}</h1>
+    <p class="rho-kicker">Rho Capital</p>
+    <h1 class="rho-headline">Agent dashboard</h1>
+    <p class="rho-lede">Credit files, cash, and settlements for every agent in the cohort.</p>
     <div class="fico-row">
       ${shopping ? ficoMeter(shopping.fico, "Shopping Agent") : ""}
       ${merchant ? ficoMeter(merchant.fico, "Merchant Agent") : ""}
@@ -285,6 +286,35 @@ function renderBanking() {
   }
 }
 
+function fourC(blocks) {
+  return `<div class="rho-4c">${(blocks || [])
+    .map((b) => {
+      const facts =
+        Array.isArray(b.facts) && b.facts.length
+          ? b.facts
+          : String(b.detail || "")
+              .split(". ")
+              .filter(Boolean)
+              .map((line) => ({ label: "", value: line.replace(/\.$/, "") }));
+      return `<div class="rho-4c-card">
+        <div class="rho-4c-head">
+          <span>${esc(b.name)}</span>
+          <strong>${esc(b.score)}</strong>
+        </div>
+        <dl class="rho-4c-facts">
+          ${facts
+            .map(
+              (f) => `<div class="rho-4c-fact">${
+                f.label ? `<dt>${esc(f.label)}</dt>` : ""
+              }<dd>${esc(f.value)}</dd></div>`,
+            )
+            .join("")}
+        </dl>
+      </div>`;
+    })
+    .join("")}</div>`;
+}
+
 function renderAgents() {
   const list = (score.credit || []).filter((a) => agentFilter === "all" || a.agentId === agentFilter);
   const pnl = score.agents || [];
@@ -296,9 +326,9 @@ function renderAgents() {
       <button type="button" class="rho-tab ${agentFilter === "research" ? "active" : ""}" data-agent="research">Research</button>
     </div>
     <div class="rho-stat-row">
-      ${metric("Active agents", String((score.credit || []).length), "4C files")}
+      ${metric("Active agents", String((score.credit || []).length), "Credit files")}
       ${metric("Suggested line", usd(score.winner?.creditLineUsd || 0), score.winner?.name || "—")}
-      ${metric("Prepaid today", "Yes", "Credit is the file, not the rail")}
+      ${metric("Prepaid today", "Yes", "The file is the underwrite")}
     </div>
     <div class="rho-card-list">
       ${list
@@ -307,28 +337,24 @@ function renderAgents() {
           return `<article class="rho-file">
             <div class="rho-file-top">
               <div>
-                <div class="rho-account-id">line ${usd(a.creditLineUsd)} · prepaid</div>
+                <div class="rho-account-id">Suggested line ${usd(a.creditLineUsd)}</div>
                 <h3>${esc(a.name)}</h3>
               </div>
               ${ficoMeter(a.fico, "")}
             </div>
-            <div class="rho-cs">
-              ${(a.blocks || [])
-                .map(
-                  (b) => `<div class="rho-c">
-                    <span>${esc(b.name)}</span>
-                    <strong>${esc(b.score)}</strong>
-                    <p>${esc(b.detail || "")}</p>
-                  </div>`,
-                )
-                .join("")}
-            </div>
-            <p class="rho-thesis">${esc(a.thesis || "")}</p>
+            ${fourC(a.blocks)}
             ${
               card
-                ? `<div class="rho-file-pnl">Revenue ${money(card.revenueCents)} · Cost ${money(card.costCents)} · ROI ${card.roi}x · ${esc(card.question)}</div>`
+                ? `<div class="rho-file-metrics">
+                    ${metric("Revenue", money(card.revenueCents), "Joined sales")}
+                    ${metric("Cost", money(card.costCents), "Agent spend")}
+                    ${metric("ROI", `${card.roi}x`, "Revenue / cost")}
+                    ${metric("Suggested line", usd(a.creditLineUsd), "From this file")}
+                  </div>
+                  <p class="rho-callout"><strong>${esc(card.question || "")}</strong></p>`
                 : ""
             }
+            <p class="rho-thesis">${esc(a.thesis || "")}</p>
           </article>`;
         })
         .join("")}
@@ -365,7 +391,7 @@ function renderIdentity() {
       <button type="button" class="rho-tab ${identFilter === "buyer" ? "active" : ""}" data-ident="buyer">Shopping Agent</button>
       <button type="button" class="rho-tab ${identFilter === "seller" ? "active" : ""}" data-ident="seller">Merchant Agent</button>
     </div>
-    <p class="rho-lede">Character is live ERC-8004 feedback and validations — not a single trust score.</p>
+    <p class="rho-lede">Character is live ERC-8004 feedback and validations. It is not a single trust score.</p>
     <div class="rho-ident-grid">
       ${showBuyer ? identCard("buyer", ids.buyer, (score.credit || []).find((a) => a.agentId === "sales")?.fico) : ""}
       ${showSeller ? identCard("seller", ids.seller, score.merchant?.fico) : ""}
@@ -384,7 +410,7 @@ function renderRecon() {
       ${metric("Paid · matched", money(s.matchedCents || 0), `${s.matched || 0} joins`)}
       ${metric("Overdue · unmatched", money(s.unmatchedCents || 0), `${s.unmatched || 0} claims`)}
       ${metric("Rho settlements", String(s.rhoCount || 0), score.mode === "live" ? "live" : "joined to the ledger")}
-      ${metric("Unpaid", "$0.00", "Prepaid rails — no AR float")}
+      ${metric("Unpaid", "$0.00", "Prepaid rails. No AR float.")}
     </div>
     <table class="rho-table">
       <thead>
@@ -523,24 +549,21 @@ document.addEventListener("click", (e) => {
 });
 
 async function load() {
-  const [body, health] = await Promise.all([
-    fetch("/api/ledger/scorecard").then((r) => r.json()),
-    fetch("/api/health").then((r) => r.json()),
-  ]);
+  const body = await fetch("/api/ledger/scorecard").then((r) => r.json());
   score = body;
-  document.getElementById("modePill").textContent = health.paymentMode || "adapter";
-  document.getElementById("rhoPill").textContent = score.mode === "live" ? "rho · live" : "rho · fixture";
+  document.getElementById("rhoPill").textContent = "Rho";
   const hash = (location.hash || "#home").slice(1);
   go(PANES[hash] ? hash : "home");
 }
 
 load().catch(() => {
-  document.getElementById("modePill").textContent = "offline";
+  document.getElementById("rhoPill").textContent = "offline";
 });
 
 function pushChat(role, text) {
   chatHistory.push({ role, content: text });
   const log = document.getElementById("chatLog");
+  document.getElementById("rhoChat")?.classList.add("open");
   const row = document.createElement("div");
   row.className = `rho-chat-msg ${role}`;
   row.textContent = text;
@@ -555,10 +578,13 @@ document.getElementById("chatForm")?.addEventListener("submit", async (e) => {
   if (!question || !score) return;
   input.value = "";
   pushChat("user", question);
+  document.getElementById("rhoChat")?.classList.add("open");
   const pending = document.createElement("div");
   pending.className = "rho-chat-msg assistant pending";
   pending.textContent = "Reading the ledger…";
-  document.getElementById("chatLog").appendChild(pending);
+  const log = document.getElementById("chatLog");
+  log.appendChild(pending);
+  log.scrollTop = log.scrollHeight;
   try {
     const res = await fetch("/api/ledger/chat", {
       method: "POST",

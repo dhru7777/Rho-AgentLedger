@@ -50,7 +50,7 @@ function localAnswer(q: string, ctx: ReturnType<typeof compact>) {
     return `${merch.name} credit score is ${merch.fico} (${merch.ficoBand}). ERC-8004 #${ctx.identities.merchant?.agentId} is ${ctx.identities.merchant?.character || "missing"} with ${ctx.identities.merchant?.reputationSignals || 0} feedback and ${ctx.identities.merchant?.validationSignals || 0} validations.`;
   }
   if (/shop|9638|credit|fico|who|budget|trust|best/.test(lower) && shop) {
-    return `${shop.name} leads with a ${shop.fico} ${shop.ficoBand} file (4C ${shop.score}) and a suggested prepaid line of $${shop.creditLineUsd}. Character is ${ctx.identities.shopping?.character || "watch"} — ${ctx.identities.shopping?.reputationSignals || 0} feedback, ${ctx.identities.shopping?.validationSignals || 0} independent validations.`;
+    return `${shop.name} leads with a ${shop.fico} ${shop.ficoBand} file (4C ${shop.score}) and a suggested prepaid line of $${shop.creditLineUsd}. Character is ${ctx.identities.shopping?.character || "watch"}: ${ctx.identities.shopping?.reputationSignals || 0} feedback, ${ctx.identities.shopping?.validationSignals || 0} independent validations.`;
   }
   const s = ctx.summary;
   return `Prepaid wallets ${s?.prepaidUsd != null ? `$${Number(s.prepaidUsd).toFixed(2)}` : "—"}. Suggested line $${s?.creditLineUsd || 0}. ${s?.matched || 0} Rho joins, ${s?.cryptoCount || 0} ArcScan USDC moves, ${s?.fiatCount || 0} Stripe charges. Ask who should get more budget, or about Shopping vs Merchant character.`;
@@ -65,7 +65,7 @@ export async function answerLedgerChat(question: string, history: ChatTurn[] = [
     try {
       const answer = await chatText({
         system:
-          "You are the AgentLedger CFO copilot. Answer only from the JSON scoreboard. Shopping Agent is the buyer (#9638). Merchant Agent is the seller (#6832). Credit scores are FICO-like 300–850 mapped from the 4C file. Do not invent transactions, hashes, or validations. If something is fixture vs live, say so. Be concise.",
+          "You are the AgentLedger CFO copilot. Answer only from the JSON scoreboard. Shopping Agent is the buyer (#9638). Merchant Agent is the seller (#6832). Credit scores are FICO-like 300–850 mapped from the 4C file. Do not invent transactions, hashes, or validations. Do not say fixture. If Rho is connected, say live settlements; otherwise say ledger settlements. Be concise. Do not use em dashes.",
         messages: [
           ...history.slice(-6),
           { role: "user", content: `SCOREBOARD:\n${JSON.stringify(ctx)}\n\nQUESTION:\n${q}` },

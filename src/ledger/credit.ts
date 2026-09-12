@@ -3,11 +3,14 @@ import { listTxs, type StoredTx } from "../db/store.js";
 import type { TrustSignals } from "../types.js";
 import { AGENT_IDS, AGENT_NAMES, type AgentId } from "./attribution.js";
 
+export type CreditFact = { label: string; value: string };
+
 export type CreditBlock = {
   id: "character" | "capacity" | "collateral" | "condition";
   name: string;
   score: number;
   detail: string;
+  facts: CreditFact[];
 };
 
 export type FicoBand = "Poor" | "Fair" | "Good" | "Very Good" | "Exceptional";
@@ -51,13 +54,27 @@ function character(txs: StoredTx[], trust: TrustSignals | null, matchRate: numbe
   const total = txs.length || 1;
   const behavior = (settled / total) * 8 + matchRate * 8;
   const score = clamp(identity + feedbackPts + validationPts + failures + behavior);
+  const name = trust?.name || "Agent";
+  const feedback = trust?.reputationSignals || 0;
+  const validations = trust?.validationSignals || 0;
   return {
     id: "character",
     name: "Character",
     score,
     detail: live
-      ? `${trust?.name || "Agent"} · ${trust?.reputationSignals || 0} on-chain feedback · ${trust?.validationSignals || 0} validations`
-      : "No live ERC-8004 character · prepaid only",
+      ? `${name} has ${feedback} on-chain feedback and ${validations} validations.`
+      : "No live ERC-8004 character. Prepaid only.",
+    facts: live
+      ? [
+          { label: "Agent", value: name },
+          { label: "Feedback", value: String(feedback) },
+          { label: "Validations", value: String(validations) },
+        ]
+      : [
+          { label: "Identity", value: "Missing" },
+          { label: "Feedback", value: "0" },
+          { label: "Validations", value: "0" },
+        ],
   };
 }
 
@@ -72,7 +89,11 @@ function capacity(txs: StoredTx[], revenueCents: number, costCents: number): Cre
     id: "capacity",
     name: "Capacity",
     score,
-    detail: `${txs.length} autonomous payments · ${roi.toFixed(1)}x ROI on joined P&L`,
+    detail: `${txs.length} autonomous payments. ${roi.toFixed(1)}x joined ROI.`,
+    facts: [
+      { label: "Payments", value: String(txs.length) },
+      { label: "Joined ROI", value: `${roi.toFixed(1)}x` },
+    ],
   };
 }
 
@@ -87,7 +108,12 @@ function collateral(txs: StoredTx[], usdc: number): CreditBlock {
     id: "collateral",
     name: "Collateral",
     score,
-    detail: `Prepaid float ${usdc.toFixed(0)} USDC · Stripe ${fiat} · Circle ${crypto}`,
+    detail: `${usdc.toFixed(0)} USDC prepaid. ${fiat} Stripe charges.`,
+    facts: [
+      { label: "Prepaid float", value: `${usdc.toFixed(0)} USDC` },
+      { label: "Stripe", value: String(fiat) },
+      { label: "USDC payments", value: String(crypto) },
+    ],
   };
 }
 
@@ -101,8 +127,17 @@ function condition(matchRate: number, rhoLive: boolean, dualRail: boolean): Cred
     name: "Condition",
     score,
     detail: rhoLive
-      ? "Rho live settlements are the underwriting condition"
-      : "Rho fixture feed · same join logic when a token arrives",
+      ? "Live Rho settlements are the underwriting condition."
+      : "Settlements on this ledger. Same join when Rho is connected.",
+    facts: rhoLive
+      ? [
+          { label: "Source", value: "Live Rho" },
+          { label: "Join", value: "Orders to cash" },
+        ]
+      : [
+          { label: "Source", value: "Rho settlements" },
+          { label: "Join", value: "Orders to cash" },
+        ],
   };
 }
 
@@ -135,7 +170,7 @@ export function scoreCredit(input: {
     ficoBand: ficoBand(fico),
     creditLineUsd,
     prepaidToday: true,
-    thesis: `Today every agent payment is prepaid. A ${score} 4C file supports a $${creditLineUsd} universal credit line against Rho-observed activity — not a storefront claim.`,
+    thesis: `Every payment is prepaid today. This ${score} file supports a $${creditLineUsd} credit line from observed settlements, not storefront claims.`,
   };
 }
 

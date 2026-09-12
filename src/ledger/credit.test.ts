@@ -73,5 +73,9 @@ describe("4C credit", () => {
     expect(strong.blocks.map((b) => b.id)).toEqual(["character", "capacity", "collateral", "condition"]);
     expect(strong.fico).toBeGreaterThan(thin.fico);
     expect(strong.ficoBand).toBeTruthy();
+    expect(strong.blocks.find((b) => b.id === "collateral")?.detail).not.toMatch(/Circle|fixture/i);
+    expect(strong.blocks.find((b) => b.id === "condition")?.detail).not.toMatch(/fixture/i);
+    expect(strong.thesis).not.toMatch(/—|fixture|Circle/i);
+    expect(thin.blocks.find((b) => b.id === "condition")?.detail).not.toMatch(/fixture/i);
   });
 });

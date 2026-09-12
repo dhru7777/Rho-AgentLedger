@@ -68,30 +68,30 @@ export function characterFrom8004(input: {
   isActive: boolean;
 }): { character: TrustSignals["character"]; characterDetail: string } {
   if (!input.identityVerified) {
-    return { character: "missing", characterDetail: "No live ERC-8004 record · cannot underwrite character" };
+    return { character: "missing", characterDetail: "No live ERC-8004 record. Cannot underwrite character." };
   }
   if (!input.isActive) {
-    return { character: "thin", characterDetail: "ERC-8004 identity exists but is inactive" };
+    return { character: "thin", characterDetail: "ERC-8004 identity exists but is inactive." };
   }
   if (input.recentFailures >= 3) {
     return {
       character: "thin",
-      characterDetail: `${input.recentFailures} recent failures · prepaid only`,
+      characterDetail: `${input.recentFailures} recent failures. Prepaid only.`,
     };
   }
   if (input.reputationSignals >= 5 && input.validationSignals >= 1 && input.recentFailures === 0) {
     return {
       character: "good",
-      characterDetail: `${input.reputationSignals} on-chain feedback · ${input.validationSignals} independent validations${input.x402Supported ? " · x402" : ""}`,
+      characterDetail: `${input.reputationSignals} on-chain feedback. ${input.validationSignals} independent validations.${input.x402Supported ? " x402 supported." : ""}`,
     };
   }
   if (input.reputationSignals > 0 || input.validationSignals > 0 || input.x402Supported) {
     return {
       character: "watch",
-      characterDetail: `${input.reputationSignals} feedback · ${input.validationSignals} validations · not independently validated yet`,
+      characterDetail: `${input.reputationSignals} feedback. ${input.validationSignals} validations. Not independently validated yet.`,
     };
   }
-  return { character: "thin", characterDetail: "Identity live · no feedback or validations yet" };
+  return { character: "thin", characterDetail: "Identity live. No feedback or validations yet." };
 }
 
 export function mapScanAgent(
