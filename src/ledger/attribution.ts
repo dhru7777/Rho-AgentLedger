@@ -5,7 +5,7 @@ export const AGENT_IDS = ["sales", "support", "research"] as const;
 export type AgentId = (typeof AGENT_IDS)[number];
 
 export const AGENT_NAMES: Record<AgentId, string> = {
-  sales: "Sales Agent",
+  sales: "Shopping Agent",
   support: "Support Agent",
   research: "Research Agent",
 };

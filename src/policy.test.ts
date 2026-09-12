@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { captureTurn } from "./intent/capture.js";
 import { parseIntent } from "./intent.js";
 import { evaluatePolicy } from "./policy.js";
-import { getSellerTrust } from "./trust.js";
+import { mapScanAgent } from "./trust.js";
 import { SERVICES, sellerCoversIntent } from "./discovery.js";
 import { verifyResponse } from "./verification.js";
 
@@ -57,7 +57,20 @@ describe("intent capture", () => {
 });
 
 describe("policy rails", () => {
-  const trust = getSellerTrust();
+  const trust = mapScanAgent(
+    {
+      token_id: "6832",
+      name: "Agent #6832",
+      is_active: true,
+      total_feedbacks: 8,
+      successful_validations: 0,
+      x402_supported: true,
+      chain_id: 11155111,
+    },
+    "seller",
+    0,
+    "live",
+  );
   const tick = SERVICES.find((s) => s.id === "market-data-eth")!;
   const ohlc = SERVICES.find((s) => s.id === "market-data-eth-ohlc")!;
   const memo = SERVICES.find((s) => s.id === "research-eth")!;

@@ -7,7 +7,7 @@ function order(partial: Partial<CommerceOrder> & Pick<CommerceOrder, "id" | "amo
   return {
     platform: "fixture",
     agentId: "sales",
-    agentName: "Sales Agent",
+    agentName: "Shopping Agent",
     title: "Test",
     currency: "USD",
     createdAt: "2026-09-01T16:00:00.000Z",

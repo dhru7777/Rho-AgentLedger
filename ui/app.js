@@ -168,22 +168,38 @@ function walletSectionHtml(title, rows) {
       .join("");
 }
 
-function cryptoWalletHtml(role) {
-  const wallet = role === "buyer" ? identities?.wallets?.buyer : identities?.wallets?.seller;
-  const usdc = wallet?.usdc == null ? "—" : `${Number(wallet.usdc).toFixed(2)} USDC`;
+function cryptoWalletHtml(data, role) {
+  if (!data) {
+    return `<div class="pop-title">${role === "buyer" ? "BUYER · CRYPTO" : "SELLER · CRYPTO"}</div><div class="tx-empty">Loading ArcScan…</div>`;
+  }
+  const usdc = data.usdc == null ? "—" : `${Number(data.usdc).toFixed(2)} USDC`;
+  const transfers = data.recentTransfers || [];
+  const rows = transfers.length
+    ? transfers.slice(0, 8).map((tx) => {
+        const outbound = tx.direction === "out";
+        const sign = outbound ? "−" : "+";
+        const cls = outbound ? "tx-out" : "tx-in";
+        const when = tx.at ? new Date(tx.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+        return `<div class="tx-row">
+          <div class="${cls}">${sign}$${(tx.amountCents / 100).toFixed(2)} USDC</div>
+          <div class="tx-meta"><span>${esc(tx.title || "")}</span><span>${esc(when)}</span></div>
+          <div class="tx-meta"><span>${esc(tx.status || "success")}</span><a href="${esc(tx.explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(tx.hash))}</a></div>
+        </div>`;
+      }).join("")
+    : `<div class="tx-empty">${data.errors?.length ? esc(data.errors[0]) : "No USDC transfers on ArcScan yet"}</div>`;
   return (
     `<div class="pop-title">${role === "buyer" ? "BUYER · CRYPTO" : "SELLER · CRYPTO"}</div>` +
     walletSectionHtml("Balance", {
       USDC: usdc,
-      Source: wallet?.source === "adapter" || identities?.paymentMode === "adapter" ? "adapter overlay" : wallet?.source || "—",
+      Source: data.source || "—",
+      Explorer: "ArcScan",
     }) +
     walletSectionHtml("Wallet", {
-      Product: wallet?.product || "Circle Agent Wallet",
-      Chain: wallet?.chain || "Arc Testnet",
-      Address: wallet?.address || "unassigned",
+      Chain: data.chain || "Arc Testnet",
+      Address: data.address || "unassigned",
     }) +
-    `<div class="pop-section">Recent crypto</div>` +
-    txListHtml(role, "crypto")
+    `<div class="pop-section">${transfers.length ? "Recent USDC · ArcScan" : "Recent USDC"}</div>` +
+    rows
   );
 }
 
@@ -227,8 +243,12 @@ function renderWalletPop(role) {
       <button type="button" class="wallet-tab-btn active" data-tab="crypto">Crypto</button>
       <button type="button" class="wallet-tab-btn" data-tab="fiat">Fiat</button>
     </div>
-    <div id="${cryptoId}">${cryptoWalletHtml(role)}</div>
+    <div id="${cryptoId}"><div class="tx-empty">Loading ArcScan…</div></div>
     <div id="${fiatId}" hidden><div class="tx-empty">Loading Stripe…</div></div>`;
+  fetch(`/api/wallet/${role}/crypto`)
+    .then((r) => r.json())
+    .then((data) => { $(cryptoId).innerHTML = cryptoWalletHtml(data, role); })
+    .catch((err) => { $(cryptoId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`; });
   el.querySelectorAll(".wallet-tab-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -242,6 +262,14 @@ function renderWalletPop(role) {
           $(fiatId).innerHTML = fiatWalletHtml(data, role);
         } catch (err) {
           $(fiatId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`;
+        }
+      }
+      if (tab === "crypto") {
+        try {
+          const data = await fetch(`/api/wallet/${role}/crypto`).then((r) => r.json());
+          $(cryptoId).innerHTML = cryptoWalletHtml(data, role);
+        } catch (err) {
+          $(cryptoId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`;
         }
       }
     });
@@ -331,27 +359,17 @@ function renderLedgerTab() {
     feed.innerHTML = `<div class="empty-hint">Loading AgentLedger…</div>`;
     return;
   }
-  const winner = lastScorecard.winner?.name || "—";
   const credit = lastScorecard.credit || [];
-  const txs = lastScorecard.transactions || [];
   feed.innerHTML = `
-    <div class="merchant-status">${esc(lastScorecard.mode)} · ${esc(lastScorecard.question)}</div>
     ${credit
       .map(
         (a) => `<div class="ledger-row">
-          <div class="p-vendor">${esc(a.name)} · 4C ${esc(a.score)} · line $${esc(a.creditLineUsd)}</div>
+          <div class="p-vendor">${esc(a.name)} · ${esc(a.ficoBand || "")} ${esc(a.fico || a.score)}</div>
           <div class="p-title">${(a.blocks || []).map((b) => `${b.name} ${b.score}`).join(" · ")}</div>
-          <div class="p-price">${esc(a.thesis || "")}</div>
         </div>`,
       )
       .join("")}
-    <div class="merchant-status">CFO ledger · ${txs.length} payments</div>
-    ${txs.slice(0, 12).map((tx) => `
-      <div class="ledger-row">
-        <div class="p-vendor">${esc(tx.rail)} · ${esc(tx.role)} · ${esc(tx.status)}</div>
-        <div class="p-title">${tx.direction === "out" ? "−" : "+"}${moneyCents(tx.amountCents)} ${esc(tx.currency)} · ${esc(tx.title)}</div>
-      </div>`).join("") || `<div class="empty-hint">No autonomous payments stored yet.</div>`}
-    <div class="empty-hint">Winner: ${esc(winner)}. Open Scorecard for the full Rho join.</div>
+    <div class="empty-hint">Open the scoreboard for credit gauges and chat.</div>
   `;
 }
 
@@ -582,23 +600,31 @@ async function loadIdentities() {
   $("sellerSub").textContent = sellerUsdc == null
     ? `Agent Wallet · ${sellerWallet?.address || "unassigned"}`
     : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`;
-  $("buyerPopover").innerHTML = kvHtml("BUYER · ERC-8004", {
-    Agent: `#${identities.buyer.agentId}`,
-    Name: identities.buyer.name,
-    Identity: identities.buyer.identityVerified ? "verified" : "missing",
+  $("buyerPopover").innerHTML = kvHtml("SHOPPING AGENT · ERC-8004", {
+    Name: identities.buyer.name || "Shopping Agent",
+    Token: `#${identities.buyer.agentId}`,
+    Character: identities.buyer.character || "missing",
+    Why: identities.buyer.characterDetail || "—",
+    Identity: identities.buyer.identityVerified ? "live" : "missing",
+    Active: identities.buyer.isActive ? "yes" : "no",
+    Publisher: identities.buyer.publisherVerified ? "verified" : "unverified",
     Source: identities.buyer.source || "adapter",
     x402: identities.buyer.x402Supported ? "yes" : "no",
     Feedback: identities.buyer.reputationSignals,
     Validations: identities.buyer.validationSignals,
   }) + scanLink(identities.buyer.scanUrl);
-  $("sellerPopover").innerHTML = kvHtml("SELLER · ERC-8004", {
-    Agent: `#${identities.seller.agentId}`,
-    Name: identities.seller.name,
-    Identity: identities.seller.identityVerified ? "verified" : "missing",
+  $("sellerPopover").innerHTML = kvHtml("MERCHANT AGENT · ERC-8004", {
+    Name: identities.seller.name || "Merchant Agent",
+    Token: `#${identities.seller.agentId}`,
+    Character: identities.seller.character || "missing",
+    Why: identities.seller.characterDetail || "—",
+    Identity: identities.seller.identityVerified ? "live" : "missing",
+    Active: identities.seller.isActive ? "yes" : "no",
+    Publisher: identities.seller.publisherVerified ? "verified" : "unverified",
     Source: identities.seller.source || "adapter",
     x402: identities.seller.x402Supported ? "yes" : "no",
     Feedback: identities.seller.reputationSignals,
-    Validations:   identities.seller.validationSignals,
+    Validations: identities.seller.validationSignals,
   }) + scanLink(identities.seller.scanUrl);
   await refreshReceipts();
   await refreshLedger();

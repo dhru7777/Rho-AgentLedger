@@ -47,7 +47,7 @@ function credit(cents: number, daysAgo: number, opts: {
     agentId: opts.agent,
     agentName:
       opts.agent === "sales"
-        ? "Sales Agent"
+        ? "Shopping Agent"
         : opts.agent === "support"
           ? "Support Agent"
           : "Research Agent",

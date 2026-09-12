@@ -12,6 +12,8 @@ type ScanAgent = {
   token_id?: string;
   name?: string | null;
   is_active?: boolean;
+  is_verified?: boolean;
+  star_count?: number;
   total_feedbacks?: number;
   total_validations?: number;
   successful_validations?: number;
@@ -57,30 +59,82 @@ export function scanUrl(tokenId: string) {
   return `${scanWebHost()}/agents/${slug}/${tokenId}`;
 }
 
+export function characterFrom8004(input: {
+  identityVerified: boolean;
+  reputationSignals: number;
+  validationSignals: number;
+  recentFailures: number;
+  x402Supported: boolean;
+  isActive: boolean;
+}): { character: TrustSignals["character"]; characterDetail: string } {
+  if (!input.identityVerified) {
+    return { character: "missing", characterDetail: "No live ERC-8004 record · cannot underwrite character" };
+  }
+  if (!input.isActive) {
+    return { character: "thin", characterDetail: "ERC-8004 identity exists but is inactive" };
+  }
+  if (input.recentFailures >= 3) {
+    return {
+      character: "thin",
+      characterDetail: `${input.recentFailures} recent failures · prepaid only`,
+    };
+  }
+  if (input.reputationSignals >= 5 && input.validationSignals >= 1 && input.recentFailures === 0) {
+    return {
+      character: "good",
+      characterDetail: `${input.reputationSignals} on-chain feedback · ${input.validationSignals} independent validations${input.x402Supported ? " · x402" : ""}`,
+    };
+  }
+  if (input.reputationSignals > 0 || input.validationSignals > 0 || input.x402Supported) {
+    return {
+      character: "watch",
+      characterDetail: `${input.reputationSignals} feedback · ${input.validationSignals} validations · not independently validated yet`,
+    };
+  }
+  return { character: "thin", characterDetail: "Identity live · no feedback or validations yet" };
+}
+
 export function mapScanAgent(
   agent: ScanAgent | null,
   role: "buyer" | "seller",
   recentFailures = 0,
   mode: "live" | "adapter" = "adapter",
 ): TrustSignals {
+  void mode;
   const tokenId = role === "buyer" ? config.identity.buyerAgentId : config.identity.sellerAgentId;
   const resolvedId = String(agent?.token_id || tokenId);
   const fallbackName = role === "buyer" ? config.identity.buyerName : config.identity.sellerName;
-  const live = Boolean(agent && (agent.token_id || agent.is_active));
+  const live = Boolean(agent && (agent.token_id || agent.is_active != null));
+  const feedbacks = Number(agent?.total_feedbacks ?? 0);
+  const validations = Number(agent?.successful_validations ?? agent?.total_validations ?? 0);
+  const isActive = live ? agent?.is_active !== false : false;
+  const identityVerified = live && isActive;
+  const x402Supported = live ? Boolean(agent?.x402_supported) : false;
+  const file = characterFrom8004({
+    identityVerified,
+    reputationSignals: feedbacks,
+    validationSignals: validations,
+    recentFailures,
+    x402Supported,
+    isActive,
+  });
   return {
     agentId: resolvedId,
-    name: agent?.name || fallbackName,
-    identityVerified: mode === "adapter" ? true : live,
-    reputationSignals: Number(agent?.total_feedbacks ?? (mode === "adapter" ? (role === "seller" ? 12 : 8) : 0)),
-    validationSignals: Number(
-      agent?.successful_validations ?? agent?.total_validations ?? (mode === "adapter" ? (role === "seller" ? 3 : 2) : 0),
-    ),
+    name: fallbackName,
+    identityVerified,
+    reputationSignals: feedbacks,
+    validationSignals: validations,
     recentFailures,
     registry: agent?.contract_address || config.identity.identityRegistry,
     source: live ? "erc-8004" : "adapter",
     scanUrl: scanUrl(resolvedId),
-    x402Supported: agent ? Boolean(agent.x402_supported) : mode === "adapter",
+    x402Supported,
     chainId: agent?.chain_id || config.identity.chainId,
+    isActive,
+    publisherVerified: Boolean(agent?.is_verified),
+    starCount: Number(agent?.star_count ?? 0),
+    character: file.character,
+    characterDetail: file.characterDetail,
   };
 }
 
@@ -91,13 +145,14 @@ export async function fetchScanAgent(tokenId: string): Promise<ScanAgent | null>
   const bases = Array.from(
     new Set([
       "https://8004scan.io/api/v1/public",
+      "https://testnet.8004scan.io/api/v1/public",
       config.identity.scanApi.replace(/\/$/, ""),
     ]),
   );
   for (const base of bases) {
     try {
       const res = await fetch(`${base}/agents/${config.identity.chainId}/${tokenId}`, {
-        headers: { Accept: "application/json" },
+        headers: { Accept: "application/json", "User-Agent": "AgentLedger/1.0" },
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) continue;

@@ -19,7 +19,7 @@ export function recordOrderFromReceipt(receipt: Receipt): CommerceOrder | null {
     id: `ord_${receipt.id}`,
     platform: platformFor(receipt),
     agentId: "sales",
-    agentName: "Sales Agent",
+    agentName: "Shopping Agent",
     title: receipt.service,
     amountCents,
     currency: "USD",

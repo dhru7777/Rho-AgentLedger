@@ -59,6 +59,8 @@ describe("4C credit", () => {
         validationSignals: 1,
         recentFailures: 0,
         registry: "x",
+        source: "erc-8004",
+        character: "watch",
       },
       matchRate: 1,
       revenueCents: 842000,
@@ -69,6 +71,7 @@ describe("4C credit", () => {
     expect(strong.score).toBeGreaterThan(thin.score);
     expect(strong.creditLineUsd).toBeGreaterThan(thin.creditLineUsd);
     expect(strong.blocks.map((b) => b.id)).toEqual(["character", "capacity", "collateral", "condition"]);
-    expect(strong.prepaidToday).toBe(true);
+    expect(strong.fico).toBeGreaterThan(thin.fico);
+    expect(strong.ficoBand).toBeTruthy();
   });
 });

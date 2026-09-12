@@ -3,121 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scorecard · AgentLedger</title>
+  <title>Home · AgentLedger</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=ledger2" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=rho2" />
 </head>
-<body class="arch-body">
-  <header class="nav">
-    <a class="logo" href="/">
-      <span class="coin" aria-hidden="true">L</span>
-      <span class="logo-text">AgentLedger</span>
-    </a>
-    <nav class="nav-links">
-      <a href="/">Demo</a>
-      <a href="/architecture">Architecture</a>
-      <a href="/ledger">Scorecard</a>
+<body class="rho-dash">
+  <aside class="rho-side">
+    <a class="rho-mark" href="/ledger">AgentLedger</a>
+    <button type="button" class="rho-org" disabled>Shopping cohort</button>
+
+    <nav class="rho-nav">
+      <p class="rho-nav-label">Overview</p>
+      <button type="button" class="rho-nav-btn active" data-go="home">Home</button>
+
+      <p class="rho-nav-label">Banking</p>
+      <button type="button" class="rho-nav-btn" data-go="banking">All activity</button>
+      <button type="button" class="rho-nav-btn nest" data-go="banking-crypto">Crypto · USDC</button>
+      <button type="button" class="rho-nav-btn nest" data-go="banking-fiat">Fiat · Stripe</button>
+      <button type="button" class="rho-nav-btn nest" data-go="banking-rho">Rho settlements</button>
+
+      <p class="rho-nav-label">Agents</p>
+      <button type="button" class="rho-nav-btn" data-go="agents">Credit files</button>
+      <button type="button" class="rho-nav-btn nest" data-go="agent-sales">Shopping</button>
+      <button type="button" class="rho-nav-btn nest" data-go="agent-support">Support</button>
+      <button type="button" class="rho-nav-btn nest" data-go="agent-research">Research</button>
+
+      <p class="rho-nav-label">Identity</p>
+      <button type="button" class="rho-nav-btn" data-go="identity">ERC-8004 character</button>
+      <button type="button" class="rho-nav-btn nest" data-go="identity-buyer">Shopping Agent</button>
+      <button type="button" class="rho-nav-btn nest" data-go="identity-seller">Merchant Agent</button>
+
+      <p class="rho-nav-label">Workflows</p>
+      <button type="button" class="rho-nav-btn" data-go="recon">Reconciliation</button>
     </nav>
-    <div class="nav-right">
-      <span class="mode-pill" id="rhoPill">rho · fixture</span>
-      <span class="mode-pill" id="modePill">adapter</span>
+  </aside>
+
+  <div class="rho-main">
+    <header class="rho-top">
+      <div class="rho-top-left">
+        <span class="rho-pill" id="rhoPill">rho · fixture</span>
+        <span class="rho-pill" id="modePill">adapter</span>
+      </div>
+      <div class="rho-top-actions">
+        <a class="rho-btn" href="/architecture">Architecture</a>
+        <a class="rho-btn" href="/">Demo</a>
+        <a class="rho-btn solid" href="/">Pay</a>
+      </div>
+    </header>
+
+    <div class="rho-scroll">
+      <section class="rho-pane" id="pane-home"></section>
+      <section class="rho-pane" id="pane-banking" hidden></section>
+      <section class="rho-pane" id="pane-agents" hidden></section>
+      <section class="rho-pane" id="pane-identity" hidden></section>
+      <section class="rho-pane" id="pane-recon" hidden></section>
     </div>
-  </header>
+    <div class="rho-chat">
+      <div class="rho-chat-log" id="chatLog"></div>
+      <form class="rho-chat-form" id="chatForm">
+        <input id="chatInput" autocomplete="off" placeholder="Ask the scoreboard — who should get more budget, what’s Shopping’s credit, any unmatched claims?" />
+        <button type="submit">Ask</button>
+      </form>
+    </div>
+  </div>
 
-  <main class="page arch-page ledger-page">
-    <p class="eyebrow" id="feedMode">Rho · 4C credit file</p>
-    <h1 class="arch-title">Which agent should I trust with more money?</h1>
-    <p id="winnerLine" class="eyebrow">Prepaid today. Credit line from Rho-observed activity tomorrow.</p>
-
-    <div class="score-grid" id="scoreGrid"></div>
-
-    <h2 class="arch-h2">CFO transaction history</h2>
-    <table class="join-table" id="txTable">
-      <thead>
-        <tr>
-          <th>When</th>
-          <th>Agent</th>
-          <th>Rail</th>
-          <th>Dir</th>
-          <th>Amount</th>
-          <th>Title</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <h2 class="arch-h2">Order ↔ Rho join</h2>
-    <table class="join-table" id="joinTable">
-      <thead>
-        <tr>
-          <th>Agent</th>
-          <th>Order</th>
-          <th>Amount</th>
-          <th>Match</th>
-          <th>Rho id</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </main>
-
-  <script>
-    const money = (cents) =>
-      "$" + (Number(cents || 0) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
-
-    async function load() {
-      const [score, health] = await Promise.all([
-        fetch("/api/ledger/scorecard").then((r) => r.json()),
-        fetch("/api/health").then((r) => r.json()),
-      ]);
-      document.getElementById("modePill").textContent = health.paymentMode || "adapter";
-      document.getElementById("rhoPill").textContent = score.mode === "live" ? "rho · live" : "rho · fixture";
-      document.getElementById("feedMode").textContent =
-        `${score.mode} Rho feed · ${score.rhoCount} settlements · ${ (score.transactions || []).length} ledger txs`;
-      if (score.winner) {
-        document.getElementById("winnerLine").textContent =
-          `${score.winner.name} leads · 4C ${score.winner.trust} · suggested line $${score.winner.creditLineUsd}`;
-      }
-      const grid = document.getElementById("scoreGrid");
-      grid.innerHTML = (score.credit || [])
-        .map((a) => `
-          <article class="score-card ${score.winner?.agentId === a.agentId ? "win" : ""}">
-            <div class="score-kicker">line $${a.creditLineUsd} · prepaid today</div>
-            <div class="score-name">${a.name}</div>
-            ${(a.blocks || []).map((b) => `<div class="score-metric"><span>${b.name}</span><strong>${b.score}</strong></div>`).join("")}
-            <div class="score-trust">${a.score}</div>
-            <p class="score-kicker" style="margin-top:10px;text-transform:none;letter-spacing:0">${a.thesis || ""}</p>
-          </article>`)
-        .join("");
-      const txBody = document.querySelector("#txTable tbody");
-      txBody.innerHTML = (score.transactions || [])
-        .map((row) => `<tr>
-          <td>${new Date(row.at).toLocaleString()}</td>
-          <td>${row.agentId}</td>
-          <td>${row.rail}</td>
-          <td>${row.direction}</td>
-          <td>${money(row.amountCents)} ${row.currency}</td>
-          <td>${row.title}</td>
-          <td>${row.status}</td>
-        </tr>`)
-        .join("") || `<tr><td colspan="7">No stored payments yet. Run a crypto or fiat purchase.</td></tr>`;
-      const body = document.querySelector("#joinTable tbody");
-      body.innerHTML = (score.matches || [])
-        .map((row) => `<tr>
-          <td>${row.agentId}</td>
-          <td>${row.title}</td>
-          <td>${money(row.amountCents)}</td>
-          <td>${row.kind}</td>
-          <td>${row.rhoId || "—"}</td>
-        </tr>`)
-        .join("");
-    }
-    load().catch(() => {
-      document.getElementById("modePill").textContent = "offline";
-    });
-  </script>
+  <script src="/ledger.js?v=rho2"></script>
 </body>
 </html>

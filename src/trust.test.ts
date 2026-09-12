@@ -19,13 +19,14 @@ describe("ERC-8004 scan mapping", () => {
       0,
       "live",
     );
-    expect(trust.identityVerified).toBe(true);
-    expect(trust.source).toBe("erc-8004");
+    expect(trust.name).toBe("Shopping Agent");
     expect(trust.reputationSignals).toBe(9);
     expect(trust.validationSignals).toBe(0);
     expect(trust.x402Supported).toBe(true);
     expect(trust.scanUrl).toContain("/agents/sepolia/9638");
     expect(trust.scanUrl).toContain("testnet.8004scan.io");
+    expect(trust.character).toBe("watch");
+    expect(trust.publisherVerified).toBe(false);
   });
 
   it("keeps seller #6832 verified even with zero feedback", () => {
@@ -46,12 +47,33 @@ describe("ERC-8004 scan mapping", () => {
     expect(trust.identityVerified).toBe(true);
     expect(trust.reputationSignals).toBe(0);
     expect(trust.x402Supported).toBe(true);
+    expect(trust.character).toBe("watch");
   });
 
-  it("falls back to adapter identity when scan is unavailable", () => {
+  it("calls an agent good only when feedback and independent validations are both live", () => {
+    const trust = mapScanAgent(
+      {
+        token_id: "9638",
+        is_active: true,
+        total_feedbacks: 9,
+        successful_validations: 2,
+        x402_supported: true,
+        chain_id: 11155111,
+      },
+      "buyer",
+      0,
+      "live",
+    );
+    expect(trust.character).toBe("good");
+  });
+
+  it("does not invent feedback when scan is unavailable", () => {
     const trust = mapScanAgent(null, "seller", 1, "adapter");
-    expect(trust.identityVerified).toBe(true);
+    expect(trust.identityVerified).toBe(false);
     expect(trust.source).toBe("adapter");
+    expect(trust.reputationSignals).toBe(0);
+    expect(trust.validationSignals).toBe(0);
+    expect(trust.character).toBe("missing");
     expect(trust.recentFailures).toBe(1);
   });
 });

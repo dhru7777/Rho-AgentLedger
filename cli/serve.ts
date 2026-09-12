@@ -9,8 +9,10 @@ import { config, ROOT_DIR, paymentMode } from "../src/config.js";
 import { SERVICES, discoverCatalog, runTurn } from "../src/discovery.js";
 import { discoverMarketplace } from "../src/marketplace.js";
 import { architecture, executePurchase, health, settlePurchase } from "../src/orchestrator.js";
+import { answerLedgerChat } from "../src/ledger/chat.js";
 import { buildScorecard } from "../src/ledger/scorecard.js";
 import { rhoHealth } from "../src/rho/client.js";
+import { buyerCryptoWallet, sellerCryptoWallet } from "../src/explorer/wallets.js";
 import { buyerFiatWallet, sellerFiatWallet } from "../src/stripe/wallets.js";
 import { stripeStatus } from "../src/stripe/pay.js";
 import { listTxs } from "../src/db/store.js";
@@ -163,6 +165,16 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (path === "/api/wallet/buyer/crypto" && req.method === "GET") {
+      send(res, 200, await buyerCryptoWallet());
+      return;
+    }
+
+    if (path === "/api/wallet/seller/crypto" && req.method === "GET") {
+      send(res, 200, await sellerCryptoWallet());
+      return;
+    }
+
     if (path === "/api/crypto/ETH" && req.method === "GET") {
       await proxySeller(req, res, "/charts/ETH" + url.search);
       return;
@@ -286,6 +298,19 @@ const server = createServer(async (req, res) => {
 
     if (path === "/api/ledger/transactions" && req.method === "GET") {
       send(res, 200, listTxs());
+      return;
+    }
+
+    if (path === "/api/ledger/chat" && req.method === "POST") {
+      const body = (await readJson(req)) as {
+        question?: string;
+        history?: Array<{ role?: string; content?: string }>;
+      };
+      const history = (body.history || [])
+        .filter((t) => t.role === "user" || t.role === "assistant")
+        .map((t) => ({ role: t.role as "user" | "assistant", content: String(t.content || "") }))
+        .slice(-6);
+      send(res, 200, await answerLedgerChat(String(body.question || ""), history));
       return;
     }
 

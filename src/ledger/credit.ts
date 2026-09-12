@@ -10,11 +10,28 @@ export type CreditBlock = {
   detail: string;
 };
 
+export type FicoBand = "Poor" | "Fair" | "Good" | "Very Good" | "Exceptional";
+
+export function ficoFrom4c(score: number) {
+  const n = Math.max(1, Math.min(99, Number(score) || 1));
+  return Math.round(300 + (n / 99) * 550);
+}
+
+export function ficoBand(fico: number): FicoBand {
+  if (fico >= 800) return "Exceptional";
+  if (fico >= 740) return "Very Good";
+  if (fico >= 670) return "Good";
+  if (fico >= 580) return "Fair";
+  return "Poor";
+}
+
 export type AgentCredit = {
   agentId: AgentId;
   name: string;
   blocks: CreditBlock[];
   score: number;
+  fico: number;
+  ficoBand: FicoBand;
   creditLineUsd: number;
   prepaidToday: true;
   thesis: string;
@@ -25,19 +42,22 @@ function clamp(n: number, lo = 1, hi = 99) {
 }
 
 function character(txs: StoredTx[], trust: TrustSignals | null, matchRate: number): CreditBlock {
-  const identity = trust?.identityVerified ? 40 : 12;
-  const failures = Math.max(0, 30 - (trust?.recentFailures || 0) * 10);
+  const live = trust?.source === "erc-8004" && Boolean(trust.identityVerified);
+  const identity = live ? 24 : 6;
+  const feedbackPts = Math.min(28, (trust?.reputationSignals || 0) * 3);
+  const validationPts = Math.min(18, (trust?.validationSignals || 0) * 8);
+  const failures = Math.max(0, 12 - (trust?.recentFailures || 0) * 6);
   const settled = txs.filter((t) => /succeed|paid|success|captured/i.test(t.status)).length;
   const total = txs.length || 1;
-  const behavior = (settled / total) * 15 + matchRate * 15;
-  const score = clamp(identity + failures + behavior);
+  const behavior = (settled / total) * 8 + matchRate * 8;
+  const score = clamp(identity + feedbackPts + validationPts + failures + behavior);
   return {
     id: "character",
     name: "Character",
     score,
-    detail: trust?.identityVerified
-      ? `ERC-8004 identity live · ${settled}/${txs.length || 0} settled`
-      : "Identity thin · prepaid only until character is proven",
+    detail: live
+      ? `${trust?.name || "Agent"} · ${trust?.reputationSignals || 0} on-chain feedback · ${trust?.validationSignals || 0} validations`
+      : "No live ERC-8004 character · prepaid only",
   };
 }
 
@@ -104,12 +124,15 @@ export function scoreCredit(input: {
     condition(input.matchRate, input.rhoLive, dualRail),
   ];
   const score = clamp(blocks[0].score * 0.3 + blocks[1].score * 0.25 + blocks[2].score * 0.25 + blocks[3].score * 0.2);
+  const fico = ficoFrom4c(score);
   const creditLineUsd = Math.round(score * 25);
   return {
     agentId: input.agentId,
     name: AGENT_NAMES[input.agentId],
     blocks,
     score,
+    fico,
+    ficoBand: ficoBand(fico),
     creditLineUsd,
     prepaidToday: true,
     thesis: `Today every agent payment is prepaid. A ${score} 4C file supports a $${creditLineUsd} universal credit line against Rho-observed activity — not a storefront claim.`,

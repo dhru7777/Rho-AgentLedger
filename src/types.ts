@@ -28,6 +28,8 @@ export type Intent = {
   channel: "digital" | "shopify";
 };
 
+export type CharacterVerdict = "good" | "watch" | "thin" | "missing";
+
 export type TrustSignals = {
   agentId: string;
   name: string;
@@ -40,6 +42,11 @@ export type TrustSignals = {
   scanUrl?: string;
   x402Supported?: boolean;
   chainId?: number;
+  isActive?: boolean;
+  publisherVerified?: boolean;
+  starCount?: number;
+  character?: CharacterVerdict;
+  characterDetail?: string;
 };
 
 export type PolicyResult = {
