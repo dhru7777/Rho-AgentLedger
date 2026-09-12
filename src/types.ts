@@ -75,7 +75,7 @@ export type VerificationResult = {
 export type PaymentEvidence = {
   mode: PaymentMode;
   rail: Rail;
-  scheme: "nanopayments" | "auth-capture";
+  scheme: "nanopayments" | "auth-capture" | "stripe";
   amountUsd: number;
   jobId?: string;
   authorizeTxHash?: string;
@@ -85,6 +85,12 @@ export type PaymentEvidence = {
   explorerUrl?: string;
   circleTransactionId?: string;
   note?: string;
+  stripe?: {
+    paymentIntentId?: string;
+    chargeId?: string;
+    dashboardUrl?: string;
+    cardLast4?: string;
+  };
   x402?: {
     network: string;
     scheme: string;
@@ -127,6 +133,7 @@ export type ExecuteInput = {
   prompt: string;
   maxSpendUsd?: number;
   simulateFailure?: boolean;
+  paymentRail?: "crypto" | "fiat";
   shopifyOffer?: {
     productId: string;
     title: string;

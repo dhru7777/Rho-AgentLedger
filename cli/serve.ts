@@ -11,6 +11,9 @@ import { discoverMarketplace } from "../src/marketplace.js";
 import { architecture, executePurchase, health, settlePurchase } from "../src/orchestrator.js";
 import { buildScorecard } from "../src/ledger/scorecard.js";
 import { rhoHealth } from "../src/rho/client.js";
+import { buyerFiatWallet, sellerFiatWallet } from "../src/stripe/wallets.js";
+import { stripeStatus } from "../src/stripe/pay.js";
+import { listTxs } from "../src/db/store.js";
 import { getReceipt, listReceipts } from "../src/receipts.js";
 import { loadBuyerTrust, loadSellerTrust } from "../src/trust.js";
 
@@ -131,15 +134,32 @@ const server = createServer(async (req, res) => {
     }
 
     if (path === "/api/identities") {
-      const [buyer, seller] = await Promise.all([loadBuyerTrust(), loadSellerTrust()]);
+      const [buyer, seller, buyerFiat, sellerFiat] = await Promise.all([
+        loadBuyerTrust(),
+        loadSellerTrust(),
+        buyerFiatWallet(),
+        sellerFiatWallet(),
+      ]);
       send(res, 200, {
         buyer,
         seller,
         paymentMode: paymentMode(),
+        stripe: stripeStatus(),
         network: config.arc,
         gas: gasRail(),
         wallets: await agentWallets(),
+        fiat: { buyer: buyerFiat, seller: sellerFiat },
       });
+      return;
+    }
+
+    if (path === "/api/wallet/buyer/fiat" && req.method === "GET") {
+      send(res, 200, await buyerFiatWallet());
+      return;
+    }
+
+    if (path === "/api/wallet/seller/fiat" && req.method === "GET") {
+      send(res, 200, await sellerFiatWallet());
       return;
     }
 
@@ -202,6 +222,7 @@ const server = createServer(async (req, res) => {
           advertisedNetwork: string | null;
           method: string;
         };
+        paymentRail?: "crypto" | "fiat";
       };
       try {
         const result = await executePurchase({
@@ -210,6 +231,7 @@ const server = createServer(async (req, res) => {
           simulateFailure: Boolean(body.simulateFailure),
           shopifyOffer: body.shopifyOffer,
           marketplaceListing: body.marketplaceListing,
+          paymentRail: body.paymentRail === "fiat" ? "fiat" : "crypto",
         });
         send(res, 200, result);
       } catch (err) {
@@ -259,6 +281,11 @@ const server = createServer(async (req, res) => {
 
     if ((path === "/api/ledger" || path === "/api/ledger/scorecard") && req.method === "GET") {
       send(res, 200, await buildScorecard());
+      return;
+    }
+
+    if (path === "/api/ledger/transactions" && req.method === "GET") {
+      send(res, 200, listTxs());
       return;
     }
 

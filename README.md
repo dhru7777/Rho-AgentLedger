@@ -47,6 +47,12 @@ Copy `.env.example`. Nothing is required to boot.
 
 If a Rho token arrives mid-weekend: paste it, restart, no code change.
 
+## Fiat wallets (Stripe test)
+
+Buyer and seller each have **Crypto** (Circle USDC) and **Fiat** (Stripe Visa ···4242) tabs. Shopify checkout asks which rail to use. Every SUCCESS payment is appended to `data/ledger.json` and scored on the 4Cs (character, capacity, collateral, condition).
+
+`STRIPE_SECRET_KEY` + `STRIPE_SELLER_SECRET_KEY` + `STRIPE_SELLER_ACCOUNT_ID` are enough for test mode. Webhooks are optional; the dashboard lists Stripe charges live.
+
 ## API
 
 - `GET /api/health`

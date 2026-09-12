@@ -98,7 +98,19 @@ export const config = {
     base: process.env.RHO_API_BASE || "https://rhoapi.rho.co/api/v1",
     accountId: process.env.RHO_ACCOUNT_ID || "",
   },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || "",
+    publicKey: process.env.STRIPE_PUBLIC_KEY || "",
+    sellerAccountId: process.env.STRIPE_SELLER_ACCOUNT_ID || "",
+    sellerSecretKey: process.env.STRIPE_SELLER_SECRET_KEY || "",
+    sellerPublicKey: process.env.STRIPE_SELLER_PUBLIC_KEY || "",
+    buyerPaymentMethod: process.env.STRIPE_BUYER_PAYMENT_METHOD || "pm_card_visa",
+  },
 };
+
+export function stripeReady() {
+  return Boolean(config.stripe.secretKey.startsWith("sk_test_"));
+}
 
 export function paymentMode(): "circle" | "adapter" {
   return config.circle.apiKey && config.circle.entitySecret ? "circle" : "adapter";

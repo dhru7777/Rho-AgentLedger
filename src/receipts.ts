@@ -1,4 +1,5 @@
 import { explorerTx, paymentMode } from "./config.js";
+import { recordTx } from "./db/store.js";
 import { ingestReceipt } from "./ledger/scorecard.js";
 import type { Outcome, PaymentEvidence, Receipt, Rail, VerificationResult } from "./types.js";
 
@@ -48,6 +49,43 @@ export function buildReceipt(input: {
   };
   receipts.set(receipt.id, receipt);
   ingestReceipt(receipt);
+  if (receipt.outcome === "SUCCESS" || receipt.outcome === "HELD") {
+    const amountCents = Math.round(Number(receipt.amount) * 100);
+    const stripe = input.payment.stripe;
+    const rail = stripe ? "fiat" : "crypto";
+    recordTx({
+      id: `buy_${receipt.id}`,
+      at: receipt.createdAt,
+      agentId: "sales",
+      role: "buyer",
+      rail,
+      direction: "out",
+      amountCents,
+      currency: rail === "fiat" ? "USD" : "USDC",
+      status: receipt.outcome,
+      title: receipt.service,
+      reference: receipt.id,
+      explorerUrl: stripe?.dashboardUrl || receipt.explorerUrl,
+      stripePaymentIntentId: stripe?.paymentIntentId,
+      circleTxHash: stripe ? undefined : receipt.paymentTxHash,
+    });
+    recordTx({
+      id: `sell_${receipt.id}`,
+      at: receipt.createdAt,
+      agentId: "sales",
+      role: "seller",
+      rail,
+      direction: "in",
+      amountCents,
+      currency: rail === "fiat" ? "USD" : "USDC",
+      status: receipt.outcome,
+      title: receipt.service,
+      reference: receipt.id,
+      explorerUrl: stripe?.dashboardUrl || receipt.explorerUrl,
+      stripePaymentIntentId: stripe?.paymentIntentId,
+      circleTxHash: stripe ? undefined : receipt.paymentTxHash,
+    });
+  }
   return receipt;
 }
 

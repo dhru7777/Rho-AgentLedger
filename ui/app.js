@@ -168,33 +168,84 @@ function walletSectionHtml(title, rows) {
       .join("");
 }
 
-function renderWalletPop(role) {
+function cryptoWalletHtml(role) {
   const wallet = role === "buyer" ? identities?.wallets?.buyer : identities?.wallets?.seller;
-  const el = role === "buyer" ? $("buyerWalletPop") : $("sellerWalletPop");
   const usdc = wallet?.usdc == null ? "—" : `${Number(wallet.usdc).toFixed(2)} USDC`;
-  el.innerHTML =
-    `<div class="pop-title">${role === "buyer" ? "BUYER · AGENT WALLET" : "SELLER · AGENT WALLET"}</div>` +
+  return (
+    `<div class="pop-title">${role === "buyer" ? "BUYER · CRYPTO" : "SELLER · CRYPTO"}</div>` +
     walletSectionHtml("Balance", {
       USDC: usdc,
       Source: wallet?.source === "adapter" || identities?.paymentMode === "adapter" ? "adapter overlay" : wallet?.source || "—",
     }) +
     walletSectionHtml("Wallet", {
       Product: wallet?.product || "Circle Agent Wallet",
-      Custody: wallet?.custody || "user-controlled 2-of-2 MPC",
       Chain: wallet?.chain || "Arc Testnet",
-      Id: wallet?.walletId || "unassigned",
       Address: wallet?.address || "unassigned",
     }) +
-    walletSectionHtml("Spend policy", {
-      Rule: wallet?.spendPolicy?.note || "—",
-      x402: wallet?.spendPolicy?.x402 ? "enabled" : "receive",
-      Escrow:
-        role === "buyer"
-          ? "AuthCapture holds USDC until you confirm delivery"
-          : "Seller cannot spend escrowed USDC until capture",
+    `<div class="pop-section">Recent crypto</div>` +
+    txListHtml(role, "crypto")
+  );
+}
+
+function fiatWalletHtml(data, role) {
+  if (!data || !data.configured) {
+    return `<div class="pop-title">STRIPE · ${role}</div><div class="tx-empty">Set STRIPE_SECRET_KEY to open the fiat wallet.</div>`;
+  }
+  if (role === "buyer") {
+    const charges = data.recentCharges || [];
+    return (
+      `<div class="pop-title">STRIPE · BUYER</div>` +
+      walletSectionHtml("Card", { Brand: (data.card?.brand || "visa").toUpperCase(), Last4: `···${data.card?.last4 || "4242"}`, Mode: "test" }) +
+      `<div class="pop-section">${charges.length ? "Recent charges" : "No charges yet"}</div>` +
+      charges.slice(0, 5).map((ch) => {
+        const href = ch.paymentIntentId ? `https://dashboard.stripe.com/test/payments/${ch.paymentIntentId}` : "#";
+        return `<div class="tx-row"><div class="tx-out">−$${(ch.amountCents / 100).toFixed(2)} USD</div><div class="tx-meta"><span>${esc(ch.status)}</span><a href="${esc(href)}" target="_blank" rel="noreferrer">${esc(shortHash(ch.paymentIntentId))}</a></div></div>`;
+      }).join("")
+    );
+  }
+  const charges = data.recentCharges || [];
+  return (
+    `<div class="pop-title">STRIPE · SELLER</div>` +
+    walletSectionHtml("Account", {
+      Connect: data.connectEnabled ? "on" : "off",
+      Mode: "test",
     }) +
-    `<div class="pop-section">Last 3 transactions</div>` +
-    txListHtml(role);
+    `<div class="pop-section">${charges.length ? "Received" : "No fiat receipts yet"}</div>` +
+    charges.slice(0, 5).map((ch) => {
+      const href = ch.paymentIntentId ? `https://dashboard.stripe.com/test/payments/${ch.paymentIntentId}` : "#";
+      return `<div class="tx-row"><div class="tx-in">+$${(ch.amountCents / 100).toFixed(2)} USD</div><div class="tx-meta"><span>${esc(ch.status)}</span><a href="${esc(href)}" target="_blank" rel="noreferrer">${esc(shortHash(ch.paymentIntentId))}</a></div></div>`;
+    }).join("")
+  );
+}
+
+function renderWalletPop(role) {
+  const el = role === "buyer" ? $("buyerWalletPop") : $("sellerWalletPop");
+  const cryptoId = `wtab-crypto-${role}`;
+  const fiatId = `wtab-fiat-${role}`;
+  el.innerHTML = `
+    <div class="wallet-tab-bar">
+      <button type="button" class="wallet-tab-btn active" data-tab="crypto">Crypto</button>
+      <button type="button" class="wallet-tab-btn" data-tab="fiat">Fiat</button>
+    </div>
+    <div id="${cryptoId}">${cryptoWalletHtml(role)}</div>
+    <div id="${fiatId}" hidden><div class="tx-empty">Loading Stripe…</div></div>`;
+  el.querySelectorAll(".wallet-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const tab = btn.dataset.tab;
+      el.querySelectorAll(".wallet-tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      $(cryptoId).hidden = tab !== "crypto";
+      $(fiatId).hidden = tab !== "fiat";
+      if (tab === "fiat") {
+        try {
+          const data = await fetch(`/api/wallet/${role}/fiat`).then((r) => r.json());
+          $(fiatId).innerHTML = fiatWalletHtml(data, role);
+        } catch (err) {
+          $(fiatId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`;
+        }
+      }
+    });
+  });
 }
 
 function shortAddr(addr) {
@@ -207,7 +258,7 @@ function shortHash(hash) {
   return `${hash.slice(0, 8)}…`;
 }
 
-function money(n) {
+function fmtUsd(n) {
   if (n == null) return "—";
   if (n === 0) return "$0";
   return n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`;
@@ -219,20 +270,28 @@ function productThumb(url) {
     : `<div class="p-ph"></div>`;
 }
 
-function txListHtml(role) {
-  const rows = receipts.slice(0, 3);
+function txListHtml(role, rail) {
+  const rows = (lastScorecard?.transactions || receipts)
+    .filter((tx) => {
+      if (tx.role && tx.role !== role) return false;
+      if (rail && tx.rail && tx.rail !== rail) return false;
+      return true;
+    })
+    .slice(0, 5);
   if (!rows.length) return `<div class="tx-empty">No transactions yet</div>`;
   return rows
     .map((tx) => {
-      const outbound = role === "buyer";
+      const outbound = tx.direction ? tx.direction === "out" : role === "buyer";
       const cls = outbound ? "tx-out" : "tx-in";
       const sign = outbound ? "−" : "+";
+      const amount = tx.amountCents != null ? (tx.amountCents / 100).toFixed(2) : tx.amount;
       const href = esc(tx.explorerUrl || "#");
-      const when = tx.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      const when = tx.at || tx.createdAt ? new Date(tx.at || tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      const railLabel = tx.rail === "fiat" ? "USD" : tx.currency || "USDC";
       return `<div class="tx-row">
-        <div class="${cls}">${sign}$${esc(tx.amount)} · ${esc(tx.rail || "USDC")}</div>
-        <div class="tx-meta"><span>${esc(tx.service || "")}</span><span>${esc(when)}</span></div>
-        <div class="tx-meta"><span>${esc(tx.outcome || "")}</span><a href="${href}" target="_blank" rel="noreferrer">${esc(shortHash(tx.paymentTxHash))}</a></div>
+        <div class="${cls}">${sign}$${esc(amount)} · ${esc(railLabel)}</div>
+        <div class="tx-meta"><span>${esc(tx.title || tx.service || "")}</span><span>${esc(when)}</span></div>
+        <div class="tx-meta"><span>${esc(tx.status || tx.outcome || "")}</span><a href="${href}" target="_blank" rel="noreferrer">${esc(shortHash(tx.stripePaymentIntentId || tx.circleTxHash || tx.paymentTxHash))}</a></div>
       </div>`;
     })
     .join("");
@@ -246,8 +305,8 @@ async function refreshReceipts() {
   }
 }
 
-function money(cents) {
-  return `$${(Number(cents || 0) / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+function moneyCents(cents) {
+  return `$${(Number(cents || 0) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
 let lastScorecard = null;
@@ -273,18 +332,26 @@ function renderLedgerTab() {
     return;
   }
   const winner = lastScorecard.winner?.name || "—";
+  const credit = lastScorecard.credit || [];
+  const txs = lastScorecard.transactions || [];
   feed.innerHTML = `
     <div class="merchant-status">${esc(lastScorecard.mode)} · ${esc(lastScorecard.question)}</div>
-    ${(lastScorecard.agents || [])
+    ${credit
       .map(
         (a) => `<div class="ledger-row">
-          <div class="p-vendor">${esc(a.name)} · trust ${esc(a.trust)}</div>
-          <div class="p-title">${money(a.revenueCents)} rev · ${money(a.costCents)} cost · ${esc(a.roi)}x ROI</div>
-          <div class="p-price">${esc(a.question)}</div>
+          <div class="p-vendor">${esc(a.name)} · 4C ${esc(a.score)} · line $${esc(a.creditLineUsd)}</div>
+          <div class="p-title">${(a.blocks || []).map((b) => `${b.name} ${b.score}`).join(" · ")}</div>
+          <div class="p-price">${esc(a.thesis || "")}</div>
         </div>`,
       )
       .join("")}
-    <div class="empty-hint">Winner: ${esc(winner)}. Open Scorecard for the full join.</div>
+    <div class="merchant-status">CFO ledger · ${txs.length} payments</div>
+    ${txs.slice(0, 12).map((tx) => `
+      <div class="ledger-row">
+        <div class="p-vendor">${esc(tx.rail)} · ${esc(tx.role)} · ${esc(tx.status)}</div>
+        <div class="p-title">${tx.direction === "out" ? "−" : "+"}${moneyCents(tx.amountCents)} ${esc(tx.currency)} · ${esc(tx.title)}</div>
+      </div>`).join("") || `<div class="empty-hint">No autonomous payments stored yet.</div>`}
+    <div class="empty-hint">Winner: ${esc(winner)}. Open Scorecard for the full Rho join.</div>
   `;
 }
 
@@ -361,7 +428,7 @@ async function renderSellerCatalog(opts = {}) {
         <div>
           <div class="p-vendor">${esc(listing.name)} · ${esc(listing.category)}</div>
           <div class="p-title">${esc(listing.description || listing.resource)}</div>
-          <div class="p-price">${money(listing.priceUsd)}</div>
+          <div class="p-price">${fmtUsd(listing.priceUsd)}</div>
         </div>
         <div class="p-bid"><div class="p-rail">${rail}</div><span class="bid-amt">${esc(net)}</span></div>`;
       row.addEventListener("click", () => selectOffer("digital", listing, row));
@@ -419,7 +486,7 @@ function renderChatOffers(kind, items) {
       const vendor = kind === "shopify" ? item.merchantName : item.name;
       const selected = item === pick || (kind === "shopify" ? item.productId === pick.productId : item.resource === pick.resource);
       const idx = items.indexOf(item);
-      return `<button type="button" class="chat-offer${selected ? " pick" : ""}" data-i="${idx}">${thumb}<div><div class="p-vendor">${esc(vendor)}</div><div class="p-title">${esc(title)}</div></div><div class="p-price">${kind === "shopify" ? `$${Number(price).toFixed(2)}` : money(price)}</div></button>`;
+      return `<button type="button" class="chat-offer${selected ? " pick" : ""}" data-i="${idx}">${thumb}<div><div class="p-vendor">${esc(vendor)}</div><div class="p-title">${esc(title)}</div></div><div class="p-price">${kind === "shopify" ? `$${Number(price).toFixed(2)}` : fmtUsd(price)}</div></button>`;
     })
     .join("");
   const wrap = addHtml(
@@ -454,9 +521,10 @@ function askApproval() {
   const price = offerPrice(kind, item);
   const wrap = addHtml(
     $("feedBuyer"),
-    `<div>Approve <b>${esc(title)}</b> for ${esc(kind === "shopify" ? `$${price.toFixed(2)}` : money(price))} from your Agent Wallet?</div>
+    `<div>Pay <b>${esc(title)}</b> (${esc(kind === "shopify" ? `$${price.toFixed(2)}` : fmtUsd(price))}) from which wallet?</div>
      <div class="approve-row">
-       <button type="button" class="approve-btn" data-decision="approve">Approve</button>
+       <button type="button" class="approve-btn" data-rail="crypto">Crypto · USDC</button>
+       <button type="button" class="approve-btn" data-rail="fiat">Fiat · Stripe</button>
        <button type="button" class="approve-btn reject" data-decision="reject">Reject</button>
      </div>`,
     "inc",
@@ -465,18 +533,20 @@ function askApproval() {
   wrap.querySelectorAll(".approve-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       wrap.querySelectorAll(".approve-btn").forEach((b) => (b.disabled = true));
-      if (btn.dataset.decision !== "approve") {
+      if (btn.dataset.decision === "reject" || !btn.dataset.rail) {
         pending = null;
-        addBubble($("feedBuyer"), "inc", "Rejected. Tap another listing or tell me what to get.", "ARC Agent");
+        addBubble($("feedBuyer"), "inc", "Rejected. Tap another listing or tell me what to get.", "Ledger Agent");
         return;
       }
-      addBubble($("feedBuyer"), "out", "Approved", "you");
+      const paymentRail = btn.dataset.rail;
+      addBubble($("feedBuyer"), "out", paymentRail === "fiat" ? "Approved · fiat" : "Approved · crypto", "you");
       const extra =
         pending.kind === "shopify"
-          ? { shopifyOffer: pending.item, maxSpendUsd: pending.item.priceCents / 100 }
+          ? { shopifyOffer: pending.item, maxSpendUsd: pending.item.priceCents / 100, paymentRail }
           : {
               marketplaceListing: pending.item,
               maxSpendUsd: Math.max((pending.item.priceUsd || 0.01) * 2, 0.05),
+              paymentRail,
             };
       const prompt =
         pending.kind === "shopify"
@@ -838,6 +908,7 @@ async function runTransaction(prompt, extra = {}) {
         maxSpendUsd: extra.maxSpendUsd,
         shopifyOffer: extra.shopifyOffer,
         marketplaceListing: extra.marketplaceListing,
+        paymentRail: extra.paymentRail || "crypto",
       }),
     });
     result = await res.json();
@@ -1035,7 +1106,7 @@ async function openBuyerWallet() {
   $("buyerWalletWrap")?.classList.add("open");
 }
 
-async function startShopifyTutorial() {
+async function startLedgerTutorial() {
   if (tourActive || playing) return;
   const token = ++tourToken;
   tourActive = true;
@@ -1046,13 +1117,13 @@ async function startShopifyTutorial() {
   closeAllPops();
   openTourUi();
 
-  const total = 10;
+  const total = 6;
   try {
     await runTourStep({
       step: 1,
       total,
-      title: "Shopify walkthrough",
-      body: "We will buy chocolates on Shopify with AuthCapture escrow, then open the wallet and agent profile so you can see settlement and ERC-8004 identity.",
+      title: "Rho credit for agents",
+      body: "Prepaid agent payments are the present. AgentLedger joins each spend to Rho so character, capacity, collateral, and condition can underwrite a future credit line.",
       target: $("buyerPanel"),
       nextLabel: "Start",
       autoMs: 0,
@@ -1063,145 +1134,80 @@ async function startShopifyTutorial() {
     await runTourStep({
       step: 2,
       total,
-      title: "Ask for something",
-      body: "Tap chocolates. ARC Agent searches Shopify with your spend cap.",
+      title: "Create a real spend",
+      body: "Buy chocolates. The order is commerce; the settlement is what Rho (or a labeled fixture) records.",
       target: chip,
       nextLabel: "Click chocolates",
-      autoMs: 5500,
+      autoMs: 5000,
       action: () => chip?.click(),
     });
     if (!tourActive || token !== tourToken) return;
 
     clearTourHighlight();
-    $("tourBody").textContent = "Searching Shopify… watch the seller panel fill with listings.";
-    $("tourTitle").textContent = "Discovery";
+    $("tourBody").textContent = "Listings load. Pick one, then pay from the Stripe fiat wallet.";
+    $("tourTitle").textContent = "Commerce";
     $("tourStep").textContent = `3 / ${total}`;
     placeTourTip($("sellerPanel"));
     await waitWhileBusy();
-    await sleep(1500);
+    await sleep(800);
     const offer = await waitForSelector(".chat-offer.pick, .chat-offer");
     if (!tourActive || token !== tourToken) return;
 
     await runTourStep({
       step: 3,
       total,
-      title: "Pick a product",
-      body: "Shopify listings appear here. We select the recommended item for you.",
+      title: "Pick the item",
+      body: "This is the commerce-layer claim. Rho later confirms whether money actually moved.",
       target: offer,
-      nextLabel: "Select item",
-      autoMs: 5500,
+      nextLabel: "Select",
+      autoMs: 4500,
       action: () => offer?.click(),
     });
     if (!tourActive || token !== tourToken) return;
 
-    const approve = await waitForSelector('button.approve-btn[data-decision="approve"]');
-    await sleep(800);
+    const fiat = await waitForSelector('button.approve-btn[data-rail="fiat"]');
     await runTourStep({
       step: 4,
       total,
-      title: "Approve the spend",
-      body: "Approve locks the order into policy and AuthCapture escrow. USDC does not leave until delivery is confirmed.",
-      target: approve,
-      nextLabel: "Approve",
+      title: "Fiat wallet",
+      body: "Crypto is Circle USDC. Fiat is Stripe test Visa ···4242. Both wallets exist on buyer and seller. We charge fiat so Rho can see a prepaid card spend.",
+      target: fiat,
+      nextLabel: "Pay with Stripe",
       autoMs: 6000,
-      action: () => approve?.click(),
+      action: () => fiat?.click(),
     });
     if (!tourActive || token !== tourToken) return;
 
     clearTourHighlight();
-    $("tourTitle").textContent = "Policy and escrow";
-    $("tourBody").textContent = "Watch the top phases light up. Policy chooses PROTECTED escrow for Shopify. A receipt appears, then the delivery question.";
+    $("tourTitle").textContent = "Recording";
+    $("tourBody").textContent = "The charge is stored in the ledger database and scored on the 4Cs.";
     $("tourStep").textContent = `5 / ${total}`;
-    placeTourTip($("phases") || document.querySelector(".phases"));
-    await waitForSelector("#deliveryModal", {
-      timeout: 90000,
-      predicate: (el) => el.open || el.hasAttribute("open"),
-    });
+    placeTourTip($("feedBuyer"));
+    await waitWhileBusy();
     await sleep(1200);
     if (!tourActive || token !== tourToken) return;
 
-    const yes = $("deliveryYes");
-    const modal = $("deliveryModal");
-    let inlineNote = null;
-    if (modal) {
-      inlineNote = document.createElement("div");
-      inlineNote.className = "tour-inline-note";
-      inlineNote.textContent = "Tutorial: click Yes to capture escrow to the seller. No would refund you.";
-      modal.insertBefore(inlineNote, modal.firstChild);
-    }
+    const ledgerBtn = document.querySelector('.tab-btn[data-tab="ledger"]');
     await runTourStep({
       step: 5,
       total,
-      title: "Did you receive the item?",
-      body: "Yes captures escrow to the seller. No raises a dispute and refunds your Agent Wallet. We will click Yes.",
-      target: yes,
-      nextLabel: "Click Yes",
-      autoMs: 6500,
-      action: () => yes?.click(),
-    });
-    inlineNote?.remove();
-    if (!tourActive || token !== tourToken) return;
-
-    clearTourHighlight();
-    $("tourTitle").textContent = "Settling";
-    $("tourBody").textContent = "Escrow is capturing USDC to the seller. Watch the receipt update.";
-    $("tourStep").textContent = `6 / ${total}`;
-    placeTourTip($("feedBuyer"));
-    await waitWhileBusy();
-    await sleep(1800);
-    if (!tourActive || token !== tourToken) return;
-
-    const walletBtn = $("buyerWalletWrap")?.querySelector("button");
-    await runTourStep({
-      step: 7,
-      total,
-      title: "Open the wallet",
-      body: "After payment, open the Circle Agent Wallet. Spend policy and last transactions show the escrow settlement.",
-      target: walletBtn,
-      nextLabel: "Open wallet",
+      title: "CFO ledger",
+      body: "Every crypto and fiat payment lands here: P&L, 4C scores, and a suggested credit line. Today it is still prepaid. The file is what lets Rho extend credit later.",
+      target: ledgerBtn,
+      nextLabel: "Open ledger",
       autoMs: 5500,
-      action: async () => {
-        await openBuyerWallet();
-      },
+      action: () => ledgerBtn?.click(),
     });
     if (!tourActive || token !== tourToken) return;
 
     await runTourStep({
-      step: 8,
+      step: 6,
       total,
-      title: "Escrow in the wallet",
-      body: "Check Spend policy (AuthCapture holds funds until delivery) and the latest transaction row for this purchase.",
-      target: $("buyerWalletPop"),
-      nextLabel: "Next",
-      autoMs: 6500,
-      action: () => closeAllPops(),
-    });
-    if (!tourActive || token !== tourToken) return;
-
-    const profileBtn = $("buyerProfileWrap")?.querySelector("button");
-    await runTourStep({
-      step: 9,
-      total,
-      title: "Verify agent identity",
-      body: "Open the ARC Agent profile. ERC-8004 identity is what policy checked before spending. Use Verify Identity of Agent to open 8004scan.",
-      target: profileBtn,
-      nextLabel: "Open profile",
-      autoMs: 5500,
-      action: async () => {
-        await openBuyerProfile();
-      },
-    });
-    if (!tourActive || token !== tourToken) return;
-
-    await runTourStep({
-      step: 10,
-      total,
-      title: "ERC-8004 identity",
-      body: "Agent ID, verified identity, x402, feedback, and validations. Missing identity fails closed. You can tap Verify Identity of Agent anytime.",
-      target: $("buyerPopover"),
+      title: "Who gets more money?",
+      body: "Character · Capacity · Collateral · Condition. Open Scorecard for the full Rho join and transaction history.",
+      target: $("sellerPanel"),
       nextLabel: "Done",
       autoMs: 0,
-      action: () => closeAllPops(),
     });
   } catch (err) {
     if (String(err.message || err) !== "tour-aborted") {
@@ -1216,7 +1222,7 @@ async function startShopifyTutorial() {
 }
 
 $("tutorialBtn")?.addEventListener("click", () => {
-  startShopifyTutorial();
+  startLedgerTutorial();
 });
 $("tourSkip")?.addEventListener("click", () => {
   tourActive = false;

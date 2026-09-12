@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.8.0",
+    "stripe": "^22.6.2",
     "tsx": "^4.19.0",
     "viem": "^2.56.3"
   },

@@ -11,6 +11,7 @@ import { protectedSettlement } from "./escrow-flow.js";
 import { evaluatePolicy } from "./policy.js";
 import { buildReceipt } from "./receipts.js";
 import { loadBuyerTrust, loadSellerTrust, recordSellerFailure, recordSellerSuccess } from "./trust.js";
+import { executeStripePayment, stripeStatus } from "./stripe/pay.js";
 import { offerToService } from "./ucp.js";
 import type {
   ExecuteInput,
@@ -273,8 +274,69 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
 
   let payment: PaymentEvidence;
   let sellerResponse: SellerResponse;
+  const useFiat = input.paymentRail === "fiat";
 
-  if (policy.rail === "DIRECT") {
+  if (useFiat) {
+    const charged = await executeStripePayment({
+      amountUsd: service.priceUsd,
+      offerId: service.id,
+      offerName: service.name,
+      agentId: "sales",
+    });
+    if (charged.status !== "paid") {
+      stages.push(stage("pay", "Stripe charge failed", charged.error || "fiat payment failed", "failed"));
+      const receipt = buildReceipt({
+        id: runId,
+        buyerAgent: buyerTrust.agentId,
+        sellerAgent: sellerTrust.agentId,
+        service: service.id,
+        amountUsd: 0,
+        rail: policy.rail,
+        payment: {
+          mode: paymentMode(),
+          rail: policy.rail,
+          scheme: "stripe",
+          amountUsd: 0,
+          note: charged.error,
+        },
+        verification: null,
+        outcome: "FAILED",
+      });
+      return done({ service, trust: sellerTrust, policy, receipt, marketplace });
+    }
+    payment = {
+      mode: paymentMode(),
+      rail: policy.rail,
+      scheme: "stripe",
+      amountUsd: service.priceUsd,
+      settleTxHash: charged.paymentIntentId,
+      explorerUrl: charged.dashboardUrl,
+      note: "Stripe test Visa ···4242 · prepaid fiat",
+      stripe: {
+        paymentIntentId: charged.paymentIntentId,
+        chargeId: charged.chargeId,
+        dashboardUrl: charged.dashboardUrl,
+        cardLast4: charged.card.last4,
+      },
+    };
+    stages.push(stage("pay", "Stripe fiat charged", `$${service.priceUsd.toFixed(2)} USD · Visa ···${charged.card.last4}`));
+    stages.push(stage("settle", "Fiat settled", "Prepaid card charge · Rho ledger records the spend"));
+    pushBuyer("pay", {
+      kind: "inc",
+      text: `Fiat wallet · Stripe\n$${service.priceUsd.toFixed(2)} USD on Visa ···${charged.card.last4}\n${charged.dashboardUrl}`,
+    });
+    pushSeller("pay", { kind: "inc", text: "Stripe Connect / seller receipt recorded" });
+    const raw =
+      service.category === "commerce"
+        ? await fulfillShopify(service, Boolean(input.simulateFailure))
+        : await fetchSellerResource(service.endpoint, Boolean(input.simulateFailure));
+    sellerResponse = {
+      httpStatus: raw.httpStatus === 402 ? 200 : raw.httpStatus,
+      body: raw.httpStatus === 402 ? { ...raw.body, requestId: raw.requestId, note: "fulfilled after fiat" } : raw.body,
+      requestId: raw.requestId,
+      receivedAt: new Date().toISOString(),
+    };
+  } else if (policy.rail === "DIRECT") {
     const paid = await paySellerX402(service.endpoint, service.priceUsd, Boolean(input.simulateFailure));
     payment = paid.payment;
     sellerResponse = paid.seller;
@@ -357,7 +419,9 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
   });
 
   let outcome: Outcome = "SUCCESS";
-  if (policy.rail === "PROTECTED") {
+  if (useFiat) {
+    recordSellerSuccess();
+  } else if (policy.rail === "PROTECTED") {
     const next = protectedSettlement({ verified: verification.verified });
     if (next === "hold") {
       stages.push(
@@ -624,6 +688,7 @@ export function health() {
       origin: config.seller.origin,
       routes: ["/charts/ETH", "/charts/ETH/ohlc", "/research/ETH"],
     },
+    stripe: stripeStatus(),
     services: ["/charts/ETH", "/charts/ETH/ohlc", "/research/ETH"],
   };
 }
