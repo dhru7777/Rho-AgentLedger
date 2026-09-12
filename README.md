@@ -11,10 +11,13 @@ Today every agent payment is prepaid. Rho turns observed cash into a 4C credit f
 | | |
 |---|---|
 | **Repo** | [github.com/dhru7777/Rho-AgentLedger](https://github.com/dhru7777/Rho-AgentLedger) |
+| **Live demo** | [web-production-eeef3.up.railway.app](https://web-production-eeef3.up.railway.app) |
+| **Live scorecard** | [web-production-eeef3.up.railway.app/ledger](https://web-production-eeef3.up.railway.app/ledger) |
+| **Live architecture** | [web-production-eeef3.up.railway.app/architecture](https://web-production-eeef3.up.railway.app/architecture) |
 | **4Cs presentation (Canva)** | [canva.link/zc8k9kynpnxexvi](https://canva.link/zc8k9kynpnxexvi) |
 | **Local demo** | [http://127.0.0.1:5180](http://127.0.0.1:5180) |
-| **Scorecard** | [http://127.0.0.1:5180/ledger](http://127.0.0.1:5180/ledger) |
-| **Low-level architecture** | [http://127.0.0.1:5180/architecture](http://127.0.0.1:5180/architecture) |
+| **Local scorecard** | [http://127.0.0.1:5180/ledger](http://127.0.0.1:5180/ledger) |
+| **Local architecture** | [http://127.0.0.1:5180/architecture](http://127.0.0.1:5180/architecture) |
 | **Commerce rails (AgentARC)** | [github.com/ysbobde2002/AgentARC](https://github.com/ysbobde2002/AgentARC) |
 | **AgentARC live demo** | [agentarc-production.up.railway.app](https://agentarc-production.up.railway.app) |
 | **AgentARC architecture** | [agentarc-production.up.railway.app/architecture](https://agentarc-production.up.railway.app/architecture) |
