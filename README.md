@@ -14,8 +14,8 @@ Today every agent payment is prepaid. Rho turns observed cash into a 4C credit f
 | **Live scorecard** | [web-production-eeef3.up.railway.app/ledger](https://web-production-eeef3.up.railway.app/ledger) |
 | **Live architecture** | [web-production-eeef3.up.railway.app/architecture](https://web-production-eeef3.up.railway.app/architecture) |
 | **4Cs presentation (Canva)** | [canva.link/zc8k9kynpnxexvi](https://canva.link/cnxz7ms111evfi3) |
-| **Buyer identity (ERC-8004)** | [testnet.8004scan.io · #9638](https://testnet.8004scan.io) |
-| **Seller identity (ERC-8004)** | [testnet.8004scan.io · #6832](https://testnet.8004scan.io) |
+| **Buyer identity (ERC-8004)** | [testnet.8004scan.io · #9638](https://testnet.8004scan.io/agents/sepolia/9638) |
+| **Seller identity (ERC-8004)** | [testnet.8004scan.io · #6832](https://testnet.8004scan.io/agents/sepolia/6832) |
 
 The buyer/seller UI and payment rails are copied from AgentARC (Circle Agent Wallets, x402 nanopayments, AuthCapture). Layers 2–3 — Rho settlements and the 4C scorecard — are new.
 
@@ -56,7 +56,7 @@ That is one problem, not two. Observability (order ↔ settlement) is how you co
 | Layer | Job | What we actually call |
 |---|---|---|
 | **Commerce** | What was sold | Shopify Universal Commerce Protocol; local Arc x402 seller (`cli/seller.ts` on :5181) |
-| **Identity** | Who is acting | ERC-8004 on Sepolia via [8004scan](https://testnet.8004scan.io) — buyer `#9638`, seller `#6832` |
+| **Identity** | Who is acting | ERC-8004 on Sepolia via 8004scan — buyer [`#9638`](https://testnet.8004scan.io/agents/sepolia/9638), seller [`#6832`](https://testnet.8004scan.io/agents/sepolia/6832) |
 | **Policy** | Whether to pay | `src/policy.ts` — fail closed on missing identity, overspend, ≥3 seller failures |
 | **Crypto rail** | How crypto settles | Circle Agent Wallets, Nanopayments (HTTP 402 + Gateway), AuthCapture escrow on Arc Testnet (`eip155:5042002`) |
 | **Fiat rail** | How fiat settles | Stripe PaymentIntents, test Visa `pm_card_visa` ···4242 |

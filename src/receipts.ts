@@ -23,14 +23,16 @@ export function buildReceipt(input: {
     input.payment.authorizeTxHash ||
     "pending";
 
+  const stripe = input.payment.stripe;
+  const fiat = input.payment.scheme === "stripe" || Boolean(stripe);
   const receipt: Receipt = {
     id: input.id,
     buyerAgent: input.buyerAgent,
     sellerAgent: input.sellerAgent,
     service: input.service,
     amount: input.amountUsd.toFixed(2),
-    currency: "USDC",
-    network: "Arc",
+    currency: fiat ? "USD" : "USDC",
+    network: fiat ? "Stripe" : "Arc",
     rail: input.rail,
     paymentMode: paymentMode(),
     paymentTxHash,
@@ -45,14 +47,13 @@ export function buildReceipt(input: {
     },
     outcome: input.outcome,
     createdAt: new Date().toISOString(),
-    explorerUrl: explorerTx(paymentTxHash),
+    explorerUrl: stripe?.dashboardUrl || explorerTx(paymentTxHash),
   };
   receipts.set(receipt.id, receipt);
   ingestReceipt(receipt);
   if (receipt.outcome === "SUCCESS" || receipt.outcome === "HELD") {
     const amountCents = Math.round(Number(receipt.amount) * 100);
-    const stripe = input.payment.stripe;
-    const rail = stripe ? "fiat" : "crypto";
+    const rail = fiat ? "fiat" : "crypto";
     recordTx({
       id: `buy_${receipt.id}`,
       at: receipt.createdAt,

@@ -287,7 +287,7 @@ body {
   position: relative;
 }
 .panel:has(.pop-wrap.open),
-.phone-col:has(.pop-wrap.open) { z-index: 40; }
+.phone-col:has(.pop-wrap.open) { z-index: 110; }
 
 .panel-head {
   padding: 14px 16px 12px;
@@ -370,9 +370,13 @@ body {
   width: 280px; background: var(--surface); border: 1px solid var(--text);
   border-radius: 10px; padding: 10px 12px; z-index: 50;
   box-shadow: 6px 6px 0 var(--pink);
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
 }
 .iphone-screen:has(#buyerWalletWrap.open) .wallet-sheet,
-.iphone-screen:has(#buyerProfileWrap.open) .profile-sheet {
+.iphone-screen:has(#buyerProfileWrap.open) .profile-sheet,
+.panel:has(#sellerWalletWrap.open) .seller-sheet.wallet-sheet,
+.panel:has(#sellerProfileWrap.open) .seller-sheet.profile-sheet {
   display: block;
 }
 .wallet-sheet,
@@ -392,6 +396,15 @@ body {
   box-shadow: 6px 6px 0 var(--pink);
 }
 .profile-sheet { z-index: 32; }
+.seller-sheet {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  left: auto;
+  width: min(380px, calc(100vw - 32px));
+  bottom: 72px;
+  z-index: 120;
+}
 .pop-wrap.open .popover { display: block; }
 .pop-title { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
 
@@ -402,10 +415,11 @@ body {
 .kv:last-child { border-bottom: none; }
 .kv span { color: var(--muted); }
 .kv strong { font-weight: 600; text-align: right; word-break: break-all; }
-.kv a, .scan-link {
+.kv a, .scan-link, .scan-inline {
   color: var(--text);
   font-weight: 600;
 }
+.scan-inline { text-decoration: underline; text-underline-offset: 2px; }
 .scan-link {
   display: flex;
   align-items: center;
@@ -780,7 +794,7 @@ body.arch-body {
   border-top: 1px solid var(--border); background: var(--bg);
   padding: 8px 20px 10px 16px;
   display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px;
-  position: relative; z-index: 100;
+  position: relative; z-index: 30;
 }
 .arch-btn {
   font: inherit; font-size: 12px; font-weight: 700;
@@ -1214,6 +1228,7 @@ body.rho-dash {
 .rho-thesis { color: #6f6f6a; margin-top: 0; font-size: 13px; }
 .rho-file-pnl { margin-top: 10px; font-size: 12px; color: #8a8a85; }
 .rho-link { display: inline-block; margin-top: 10px; font-weight: 600; color: #171717; }
+.rho-account-id .rho-link { margin-top: 0; }
 
 .fico-row {
   display: grid;

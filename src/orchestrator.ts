@@ -317,6 +317,7 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
         chargeId: charged.chargeId,
         dashboardUrl: charged.dashboardUrl,
         cardLast4: charged.card.last4,
+        connectEnabled: charged.connectEnabled,
       },
     };
     stages.push(stage("pay", "Stripe fiat charged", `$${service.priceUsd.toFixed(2)} USD · Visa ···${charged.card.last4}`));
@@ -325,7 +326,10 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
       kind: "inc",
       text: `Fiat wallet · Stripe\n$${service.priceUsd.toFixed(2)} USD on Visa ···${charged.card.last4}\n${charged.dashboardUrl}`,
     });
-    pushSeller("pay", { kind: "inc", text: "Stripe Connect / seller receipt recorded" });
+    pushSeller("pay", {
+      kind: "inc",
+      text: charged.connectEnabled ? "Stripe Connect transfer recorded" : "Stripe seller receipt recorded",
+    });
     const raw =
       service.category === "commerce"
         ? await fulfillShopify(service, Boolean(input.simulateFailure))
@@ -529,11 +533,12 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
     outcome,
   });
 
+  const fiat = payment.scheme === "stripe";
   stages.push(
     stage(
       "receipt",
       outcome === "SUCCESS" ? "Receipt issued" : "Receipt · failed",
-      `${receipt.amount} USDC · ${policy.rail} · ${outcome}`,
+      `${receipt.amount} ${receipt.currency} · ${fiat ? "Stripe" : policy.rail} · ${outcome}`,
       outcome === "SUCCESS" ? "complete" : "failed",
     ),
   );
@@ -542,13 +547,13 @@ export async function executePurchase(input: ExecuteInput): Promise<ExecuteResul
     text: "Receipt",
     card: {
       Service: service.name,
-      Amount: `${receipt.amount} USDC`,
-      Rail: policy.rail === "DIRECT" ? "Nanopayment" : "Escrow",
-      Network: "Arc",
+      Amount: `${receipt.amount} ${receipt.currency}`,
+      Rail: fiat ? "Stripe" : policy.rail === "DIRECT" ? "Nanopayment" : "Escrow",
+      Network: receipt.network,
       Status: outcome,
       Verification: receipt.verification.status,
       Tx: `${receipt.paymentTxHash.slice(0, 18)}…`,
-      Mode: receipt.paymentMode,
+      Mode: fiat ? "stripe" : receipt.paymentMode,
     },
   });
 
@@ -721,25 +726,6 @@ export function architecture() {
       "PROTECTED: authorize USDC into operator escrow → GET /research/ETH → verify → buyer confirms receipt → capture or void",
       "Independent verification, then a receipt with Arc explorer link",
     ],
-    boundaries: [
-      { boundary: "Demo HTTP", owner: "cli/serve.ts", contract: "Buyer UI, orchestrator API, health, identities. Port 5180." },
-      { boundary: "x402 seller", owner: "cli/seller.ts · src/seller/server.ts", contract: "Own process on 5181. Unpaid GET /charts/* returns HTTP 402 on eip155:5042002. Paid GET returns CoinGecko payload." },
-      { boundary: "Intent", owner: "src/intent.ts · src/intent/capture.ts", contract: "Maps prompt + spend cap to financial-data, research, or commerce." },
-      { boundary: "Discovery", owner: "src/seller/catalog.ts · src/marketplace.ts", contract: "Purchasable catalog is the local Arc seller. Circle /v2/x402/discovery/resources is median-only." },
-      { boundary: "Trust", owner: "src/trust.ts", contract: "Live 8004scan #9638 / #6832. Fail closed if identity missing. Feedback is not a single score." },
-      { boundary: "Policy", owner: "src/policy.ts", contract: "≤ $1 instant objective → DIRECT. ≥ $100 or lagged → PROTECTED. Overspend and ≥3 failures reject." },
-      { boundary: "Nanopayments", owner: "src/seller/client.ts · src/circle/nanopayments.ts", contract: "Buyer signs the seller's PAYMENT-REQUIRED. Seller settles, then serves." },
-      { boundary: "Escrow", owner: "src/circle/escrow.ts · contracts/AgentJobEscrow.sol", contract: "Authorize → verify → capture or void. No chargeback after capture." },
-      { boundary: "Verification", owner: "src/verification.ts", contract: "Independent schema, timestamp, request correlation, price sanity — not seller-attested." },
-    ],
-    products: {
-      Arc: "Settlement layer. USDC is native gas. Chain ID 5042002 testnet.",
-      USDC: "Unit of account, gas token, and payment asset.",
-      "Agent Stack": "Agent Wallets + Marketplace discovery (price band) + Nanopayments.",
-      "Circle Wallets": "Developer-controlled EOAs for buyer, seller, operator on ARC-TESTNET.",
-      Nanopayments: "x402 + Circle Gateway batched USDC (domain 26) against our Arc seller.",
-      "Circle Contracts": "AgentJobEscrow authorize / capture / void on Arc.",
-    },
     gas: gasRail(),
   };
 }

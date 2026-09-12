@@ -97,6 +97,7 @@ export type PaymentEvidence = {
     chargeId?: string;
     dashboardUrl?: string;
     cardLast4?: string;
+    connectEnabled?: boolean;
   };
   x402?: {
     network: string;
@@ -116,8 +117,8 @@ export type Receipt = {
   sellerAgent: string;
   service: string;
   amount: string;
-  currency: "USDC";
-  network: "Arc";
+  currency: "USDC" | "USD";
+  network: "Arc" | "Stripe";
   rail: Rail;
   paymentMode: PaymentMode;
   paymentTxHash: string;

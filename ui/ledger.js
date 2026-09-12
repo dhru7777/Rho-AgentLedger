@@ -367,7 +367,11 @@ function identCard(role, t, fico) {
   if (!t) return "";
   const title = role === "buyer" ? "Shopping Agent" : "Merchant Agent";
   return `<article class="rho-file">
-    <div class="rho-account-id">ERC-8004 #${esc(t.agentId)}</div>
+    <div class="rho-account-id">${
+      t.scanUrl
+        ? `<a class="rho-link" href="${esc(t.scanUrl)}" target="_blank" rel="noopener noreferrer">ERC-8004 #${esc(t.agentId)}</a>`
+        : `ERC-8004 #${esc(t.agentId)}`
+    }</div>
     <h3>${esc(t.name || title)}</h3>
     ${ficoMeter(fico, "")}
     <div class="rho-cs">
@@ -377,7 +381,7 @@ function identCard(role, t, fico) {
       <div class="rho-c"><span>Publisher</span><strong>${t.publisherVerified ? "verified" : "unverified"}</strong></div>
     </div>
     <p class="rho-thesis">${esc(t.characterDetail || "")}</p>
-    ${t.scanUrl ? `<a class="rho-link" href="${esc(t.scanUrl)}" target="_blank" rel="noreferrer">Open 8004scan</a>` : ""}
+    ${t.scanUrl ? `<a class="rho-link" href="${esc(t.scanUrl)}" target="_blank" rel="noopener noreferrer">Open 8004scan</a>` : ""}
   </article>`;
 }
 

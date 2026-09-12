@@ -1,36 +1,7 @@
 async function load() {
-  const [arch, health] = await Promise.all([
-    fetch("/api/architecture").then((r) => r.json()),
-    fetch("/api/health").then((r) => r.json()),
-  ]);
+  const health = await fetch("/api/health").then((r) => r.json());
   document.getElementById("modePill").textContent = health.paymentMode || "adapter";
   document.getElementById("footMode").textContent = `${health.paymentMode || "adapter"} mode · ${health.network}`;
-
-  const boundaries = document.getElementById("boundaries");
-  if (boundaries && arch.boundaries?.length) {
-    const table = document.createElement("table");
-    table.className = "lld-table";
-    table.innerHTML =
-      "<thead><tr><th>Boundary</th><th>Owner</th><th>Contract</th></tr></thead>";
-    const body = document.createElement("tbody");
-    for (const row of arch.boundaries) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${row.boundary}</td><td><code>${row.owner}</code></td><td>${row.contract}</td>`;
-      body.appendChild(tr);
-    }
-    table.appendChild(body);
-    boundaries.appendChild(table);
-  }
-
-  const products = document.getElementById("products");
-  if (products) {
-    for (const [k, v] of Object.entries(arch.products || {})) {
-      const el = document.createElement("article");
-      el.className = "paper";
-      el.innerHTML = `<div class="paper-head"><strong>${k}</strong></div><p>${v}</p>`;
-      products.appendChild(el);
-    }
-  }
 }
 
 load().catch((err) => {

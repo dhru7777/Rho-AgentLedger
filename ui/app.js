@@ -45,7 +45,7 @@ function lightPhase(id, failed) {
   if (!el) return;
   el.classList.add(failed ? "fail" : "lit");
 }
-function setRail(policy) {
+function setRail(policy, payment) {
   const badge = $("railBadge");
   badge.className = "rail-badge";
   if (!policy) {
@@ -55,6 +55,11 @@ function setRail(policy) {
   if (policy.decision === "REJECT") {
     badge.textContent = "rejected";
     badge.classList.add("reject");
+    return;
+  }
+  if (payment?.scheme === "stripe") {
+    badge.textContent = "fiat · stripe";
+    badge.classList.add("direct");
     return;
   }
   if (policy.rail === "DIRECT") {
@@ -154,10 +159,17 @@ function scanLink(url) {
   return `<a class="scan-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Verify Identity of Agent ↗</a>`;
 }
 
+function kvVal(v) {
+  if (v && typeof v === "object" && v.href) {
+    return `<a class="scan-inline" href="${esc(v.href)}" target="_blank" rel="noopener noreferrer">${esc(v.label)}</a>`;
+  }
+  return esc(String(v ?? ""));
+}
+
 function kvHtml(title, rows) {
   return `<div class="pop-title">${title}</div>` +
     Object.entries(rows)
-      .map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><strong>${esc(String(v))}</strong></div>`)
+      .map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><strong>${kvVal(v)}</strong></div>`)
       .join("");
 }
 
@@ -588,7 +600,7 @@ async function browseCategory(category) {
 async function loadIdentities() {
   const res = await fetch("/api/identities");
   identities = await res.json();
-  $("modePill").textContent = identities.paymentMode || "adapter";
+  if ($("modePill")) $("modePill").textContent = identities.paymentMode || "adapter";
   const buyerWallet = identities.wallets?.buyer;
   const sellerWallet = identities.wallets?.seller;
   const buyerUsdc = buyerWallet?.usdc == null ? null : Number(buyerWallet.usdc).toFixed(2);
@@ -602,7 +614,9 @@ async function loadIdentities() {
     : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`;
   $("buyerPopover").innerHTML = kvHtml("SHOPPING AGENT · ERC-8004", {
     Name: identities.buyer.name || "Shopping Agent",
-    Token: `#${identities.buyer.agentId}`,
+    Token: identities.buyer.scanUrl
+      ? { href: identities.buyer.scanUrl, label: `#${identities.buyer.agentId}` }
+      : `#${identities.buyer.agentId}`,
     Character: identities.buyer.character || "missing",
     Why: identities.buyer.characterDetail || "—",
     Identity: identities.buyer.identityVerified ? "live" : "missing",
@@ -615,7 +629,9 @@ async function loadIdentities() {
   }) + scanLink(identities.buyer.scanUrl);
   $("sellerPopover").innerHTML = kvHtml("MERCHANT AGENT · ERC-8004", {
     Name: identities.seller.name || "Merchant Agent",
-    Token: `#${identities.seller.agentId}`,
+    Token: identities.seller.scanUrl
+      ? { href: identities.seller.scanUrl, label: `#${identities.seller.agentId}` }
+      : `#${identities.seller.agentId}`,
     Character: identities.seller.character || "missing",
     Why: identities.seller.characterDetail || "—",
     Identity: identities.seller.identityVerified ? "live" : "missing",
@@ -637,10 +653,6 @@ document.querySelectorAll(".popover, .wallet-sheet, .profile-sheet").forEach((el
     const link = e.target.closest("a[href]");
     if (link) {
       e.stopPropagation();
-      if (link.classList.contains("scan-link")) {
-        e.preventDefault();
-        window.open(link.href, "_blank", "noopener,noreferrer");
-      }
       return;
     }
     e.stopPropagation();
@@ -787,11 +799,16 @@ function paymentCopy(result) {
   if (result.policy?.decision === "REJECT") {
     return (result.policy.reasons || [])[0] || "Fail closed. No payment sent.";
   }
+  if (result.payment?.scheme === "stripe" || result.receipt?.currency === "USD") {
+    const last4 = result.payment?.stripe?.cardLast4 || "4242";
+    if (outcome === "FAILED") return result.payment?.note || "Stripe charge failed.";
+    return `Paid $${amount} USD from the Stripe fiat wallet (Visa ···${last4}).`;
+  }
   if (rail === "DIRECT") {
     if (outcome === "FAILED") {
       return paid
         ? "Paid, but independent verification rejected the payload."
-        : "Seller failed. Nanopayment was not sent — seller received 0 USDC.";
+        : "Seller failed. Nanopayment was not sent. Seller received 0 USDC.";
     }
     return `Paid ${amount} USDC from your Agent Wallet.`;
   }
@@ -805,7 +822,7 @@ function paymentCopy(result) {
 }
 
 function lightStages(result) {
-  setRail(result.policy);
+  setRail(result.policy, result.payment);
   for (const stage of result.stages || []) {
     if (stage.status === "pending") continue;
     lightPhase(phaseMap[stage.id] || stage.id, stage.status === "failed");
@@ -845,13 +862,18 @@ function showVerification(result) {
 
 function showReceipt(result) {
   if (!result.receipt) return;
-  addCollapseCard($("feedBuyer"), "Receipt", `${result.receipt.outcome} · ${result.receipt.amount} USDC`, {
+  const fiat = result.payment?.scheme === "stripe" || result.receipt.currency === "USD";
+  const unit = fiat ? "USD" : result.receipt.currency || "USDC";
+  const tx = result.payment?.stripe?.paymentIntentId || result.receipt.paymentTxHash;
+  addCollapseCard($("feedBuyer"), "Receipt", `${result.receipt.outcome} · ${result.receipt.amount} ${unit}`, {
     Service: result.receipt.service,
-    Amount: `${result.receipt.amount} USDC`,
-    Rail: result.receipt.rail,
+    Amount: `${result.receipt.amount} ${unit}`,
+    Rail: fiat ? "Stripe" : result.receipt.rail,
+    Network: result.receipt.network || (fiat ? "Stripe" : "Arc"),
     Status: result.receipt.outcome,
-    Tx: result.receipt.paymentTxHash,
-    Mode: result.receipt.paymentMode,
+    Tx: tx,
+    Dashboard: result.payment?.stripe?.dashboardUrl || result.receipt.explorerUrl || "",
+    Mode: fiat ? "stripe" : result.receipt.paymentMode,
   });
   refreshLedger();
 }
@@ -921,7 +943,19 @@ async function settleDelivery(runId, received) {
 async function runTransaction(prompt, extra = {}) {
   playing = true;
   $("form").querySelector("button").disabled = true;
-  addBubble($("feedBuyer"), "inc", looksLikeLiveEth(prompt) ? "Paying the Arc x402 seller…" : "Checking whether the Arc seller can answer that…", "ARC Agent");
+  const payingFiat = extra.paymentRail === "fiat";
+  addBubble(
+    $("feedBuyer"),
+    "inc",
+    payingFiat
+      ? "Charging the Stripe fiat wallet…"
+      : extra.shopifyOffer
+        ? "Placing the commerce order…"
+        : looksLikeLiveEth(prompt)
+          ? "Paying the Arc x402 seller…"
+          : "Checking whether the Arc seller can answer that…",
+    "ARC Agent",
+  );
 
   let result;
   try {
@@ -953,14 +987,15 @@ async function runTransaction(prompt, extra = {}) {
 
   lightStages(result);
   if (result.policy) {
-    const rail = result.policy.rail === "DIRECT" ? "Nanopayment" : "Escrow";
+    const stripe = result.payment?.scheme === "stripe";
+    const rail = stripe ? "Stripe" : result.policy.rail === "DIRECT" ? "Nanopayment" : "Escrow";
     addCollapseCard(
       $("feedBuyer"),
       "Policy",
       `${result.policy.decision} · ${rail}`,
       {
         Decision: result.policy.decision,
-        Rail: result.policy.rail === "DIRECT" ? "Nanopayment" : "AuthCapture escrow",
+        Rail: stripe ? "Stripe test Visa ···4242" : result.policy.rail === "DIRECT" ? "Nanopayment" : "AuthCapture escrow",
       },
       { listLabel: "Why", list: result.policy.reasons },
     );
@@ -994,8 +1029,7 @@ async function runTransaction(prompt, extra = {}) {
 function looksLikeLiveEth(prompt) {
   const t = String(prompt || "");
   if (/\b(btc|bitcoin)\b/i.test(t)) return false;
-  if (/\b20\d{2}\b/.test(t)) return false;
-  return true;
+  return /\beth\b|ethereum|ohlc|spot|chart/i.test(t);
 }
 
 let tourActive = false;
@@ -1267,5 +1301,5 @@ window.addEventListener("resize", () => {
 
 fillCategories();
 loadIdentities().catch(() => {
-  $("modePill").textContent = "offline";
+  if ($("modePill")) $("modePill").textContent = "offline";
 });
