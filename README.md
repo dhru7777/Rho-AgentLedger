@@ -261,20 +261,6 @@ npm run typecheck
 
 Copy `.env.example`. Nothing is required to boot.
 
-**Rho (flip to live)**
-
-- `RHO_API_TOKEN` — Settings → Configurations → Access Tokens (`accounts:read`, `transactions:read`)
-- `RHO_API_BASE` — `https://rhoapi.rho.co/api/v1` or `https://rhoapi-sandbox.rho.co/api/v1`
-- `RHO_ACCOUNT_ID` — optional
-- `RHO_MODE` — `auto` (default), `live`, or `fixture`
-
-If a Rho token arrives mid-weekend: paste it, restart, no code change.
-
-**Circle (optional)** — `CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, wallet set + buyer/seller/operator ids and addresses. Fund Arc Testnet USDC at [faucet.circle.com](https://faucet.circle.com).
-
-**Stripe (optional)** — `STRIPE_SECRET_KEY` + `STRIPE_SELLER_SECRET_KEY` + `STRIPE_SELLER_ACCOUNT_ID`. Test Visa is enough; webhooks are optional.
-
----
 
 ## API
 
