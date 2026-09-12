@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=rho10" />
+  <link rel="stylesheet" href="/styles.css?v=rho11" />
 </head>
 <body>
   <header class="header">
@@ -55,21 +55,25 @@
           </div>
           <div class="imessage-nav">
             <div class="pop-wrap" id="buyerProfileWrap">
-              <button type="button" class="arc-avatar" title="Ledger agent profile">L</button>
+              <button type="button" class="arc-avatar" data-open-pop="buyerProfileWrap" title="Shopping Agent identity">L</button>
             </div>
             <div class="imessage-meta">
-              <div class="imessage-name">Ledger Agent</div>
+              <button type="button" class="imessage-name" data-open-pop="buyerProfileWrap">Shopping Agent</button>
+              <a class="ident-chip" id="buyerIdentChip" href="https://testnet.8004scan.io/agents/sepolia/9638" target="_blank" rel="noopener noreferrer">Verify #9638</a>
               <div class="imessage-sub" id="buyerSub">Circle Agent Wallet</div>
             </div>
             <div class="pop-wrap" id="buyerWalletWrap">
-              <button type="button" class="wallet-chip" title="Your Agent Wallet">
+              <button type="button" class="wallet-chip" data-open-pop="buyerWalletWrap" title="Your Agent Wallet">
                 <span class="wallet-dollar">$</span>
                 <span id="buyerWalletChip">wallet</span>
               </button>
             </div>
           </div>
           <div class="wallet-sheet" id="buyerWalletPop"></div>
-          <div class="profile-sheet" id="buyerPopover"></div>
+          <div class="profile-sheet" id="buyerPopover">
+            <div class="pop-title">SHOPPING AGENT · ERC-8004</div>
+            <a class="scan-link" href="https://testnet.8004scan.io/agents/sepolia/9638" target="_blank" rel="noopener noreferrer">Verify Shopping Agent #9638 ↗</a>
+          </div>
           <div class="feed" id="feedBuyer"></div>
           <div class="try-row" id="tryRow">
             <button type="button" class="prompt-chip" data-q="Find me chocolates under $10">chocolates</button>
@@ -88,22 +92,26 @@
 
     <section class="panel" id="sellerPanel">
       <div class="panel-head">
-        <div class="panel-icon">S</div>
+        <button type="button" class="panel-icon" data-open-pop="sellerProfileWrap" title="Merchant Agent identity">S</button>
         <div class="panel-meta">
-          <div class="panel-name" id="sellerName">Shopify Agent</div>
+          <button type="button" class="panel-name" data-open-pop="sellerProfileWrap" id="sellerName">Merchant Agent</button>
+          <a class="ident-chip" id="sellerIdentChip" href="https://testnet.8004scan.io/agents/sepolia/6832" target="_blank" rel="noopener noreferrer">Verify #6832</a>
           <div class="panel-sub" id="sellerSub">Circle Agent Wallet · loading</div>
         </div>
         <div class="panel-actions">
           <div class="pop-wrap" id="sellerProfileWrap">
-            <button type="button" class="profile-btn" title="Seller profile">◎</button>
+            <button type="button" class="profile-btn" data-open-pop="sellerProfileWrap" title="Seller profile">◎</button>
           </div>
           <div class="pop-wrap" id="sellerWalletWrap">
-            <button type="button" class="wallet-btn" title="Seller wallet">$</button>
+            <button type="button" class="wallet-btn" data-open-pop="sellerWalletWrap" title="Seller wallet">$</button>
           </div>
         </div>
       </div>
       <div class="wallet-sheet seller-sheet" id="sellerWalletPop"></div>
-      <div class="profile-sheet seller-sheet" id="sellerPopover"></div>
+      <div class="profile-sheet seller-sheet" id="sellerPopover">
+        <div class="pop-title">MERCHANT AGENT · ERC-8004</div>
+        <a class="scan-link" href="https://testnet.8004scan.io/agents/sepolia/6832" target="_blank" rel="noopener noreferrer">Verify Merchant Agent #6832 ↗</a>
+      </div>
       <div class="seller-tabs">
         <button type="button" class="tab-btn active" data-tab="shopify">Shopify UCP</button>
         <button type="button" class="tab-btn" data-tab="digital">Arc x402</button>
@@ -154,6 +162,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=rho7"></script>
+  <script src="/app.js?v=rho8"></script>
 </body>
 </html>

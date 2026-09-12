@@ -219,8 +219,22 @@ body {
   cursor: pointer; color: var(--text);
 }
 .imessage-meta { flex: 1; min-width: 0; }
-.imessage-name { font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+.imessage-name {
+  font-family: var(--display); font-size: 15px; font-weight: 600;
+  letter-spacing: -0.03em; line-height: 1.1;
+  border: 0; background: transparent; padding: 0; color: inherit;
+  cursor: pointer; text-align: left; display: block;
+}
 .imessage-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.ident-chip {
+  display: inline-flex; align-items: center;
+  margin-top: 3px; padding: 2px 8px;
+  border: 1px solid var(--text); border-radius: 999px;
+  background: var(--pink); color: var(--text);
+  font-size: 10px; font-weight: 700; text-decoration: none;
+  width: fit-content;
+}
+.ident-chip:hover { background: #ffb6f0; }
 
 .wallet-chip {
   display: flex; align-items: center; gap: 5px;
@@ -302,9 +316,14 @@ body {
   border: 1px solid var(--border-hi); background: var(--pink);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--display); font-weight: 700; font-size: 12px;
+  cursor: pointer; color: inherit;
 }
 .panel-meta { flex: 1; min-width: 0; }
-.panel-name { font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: -0.02em; }
+.panel-name {
+  font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: -0.02em;
+  border: 0; background: transparent; padding: 0; color: inherit;
+  cursor: pointer; text-align: left; display: block;
+}
 .panel-sub { font-size: 10px; color: var(--muted); word-break: break-all; }
 .panel-actions { display: flex; gap: 4px; }
 
@@ -396,6 +415,10 @@ body {
   box-shadow: 6px 6px 0 var(--pink);
 }
 .profile-sheet { z-index: 32; }
+.profile-sheet.open,
+.wallet-sheet.open {
+  display: block;
+}
 .seller-sheet {
   position: fixed;
   top: 72px;

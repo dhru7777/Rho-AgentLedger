@@ -154,9 +154,43 @@ function addQuoteHero(feed, body) {
   feed.scrollTop = feed.scrollHeight;
 }
 
-function scanLink(url) {
+function scanLink(url, label) {
   if (!url) return "";
-  return `<a class="scan-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Verify Identity of Agent ↗</a>`;
+  return `<a class="scan-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label || "Verify Identity of Agent ↗")}</a>`;
+}
+
+function identityScan(role, agent) {
+  const id = String(agent?.agentId || (role === "buyer" ? "9638" : "6832"));
+  return {
+    id,
+    url: agent?.scanUrl || `https://testnet.8004scan.io/agents/sepolia/${id}`,
+  };
+}
+
+function renderIdentitySheet(role, agent) {
+  const el = $(role === "buyer" ? "buyerPopover" : "sellerPopover");
+  if (!el) return;
+  const scan = identityScan(role, agent);
+  const title = role === "buyer" ? "SHOPPING AGENT · ERC-8004" : "MERCHANT AGENT · ERC-8004";
+  const name = agent?.name || (role === "buyer" ? "Shopping Agent" : "Merchant Agent");
+  el.innerHTML = kvHtml(title, {
+    Name: name,
+    Token: { href: scan.url, label: `#${scan.id}` },
+    Character: agent?.character || "live",
+    Why: agent?.characterDetail || "Open 8004scan to inspect this ERC-8004 record.",
+    Identity: agent?.identityVerified === false ? "not on 8004scan" : "live on 8004scan",
+    Active: agent?.isActive === false ? "no" : "yes",
+    Publisher: agent?.publisherVerified ? "publisher-certified" : "not publisher-certified",
+    Source: agent?.source || "erc-8004",
+    x402: agent?.x402Supported ? "yes" : "no",
+    Feedback: agent?.reputationSignals ?? "—",
+    Validations: agent?.validationSignals ?? "—",
+  }) + scanLink(scan.url, `Verify ${name} #${scan.id} ↗`);
+  const chip = $(role === "buyer" ? "buyerIdentChip" : "sellerIdentChip");
+  if (chip) {
+    chip.href = scan.url;
+    chip.textContent = `Verify #${scan.id}`;
+  }
 }
 
 function kvVal(v) {
@@ -598,82 +632,78 @@ async function browseCategory(category) {
 }
 
 async function loadIdentities() {
+  renderIdentitySheet("buyer", identities?.buyer || null);
+  renderIdentitySheet("seller", identities?.seller || null);
   const res = await fetch("/api/identities");
   identities = await res.json();
   if ($("modePill")) $("modePill").textContent = identities.paymentMode || "adapter";
+  renderIdentitySheet("buyer", identities.buyer);
+  renderIdentitySheet("seller", identities.seller);
   const buyerWallet = identities.wallets?.buyer;
   const sellerWallet = identities.wallets?.seller;
   const buyerUsdc = buyerWallet?.usdc == null ? null : Number(buyerWallet.usdc).toFixed(2);
-  $("buyerSub").textContent = buyerUsdc == null ? "Circle Agent Wallet" : `${buyerUsdc} USDC`;
-  $("buyerWalletChip").textContent = buyerUsdc == null
-    ? shortAddr(buyerWallet?.address)
-    : `${buyerUsdc} · ${shortAddr(buyerWallet?.address)}`;
+  if ($("buyerSub")) $("buyerSub").textContent = buyerUsdc == null ? "Circle Agent Wallet" : `${buyerUsdc} USDC`;
+  if ($("buyerWalletChip")) {
+    $("buyerWalletChip").textContent = buyerUsdc == null
+      ? shortAddr(buyerWallet?.address)
+      : `${buyerUsdc} · ${shortAddr(buyerWallet?.address)}`;
+  }
   const sellerUsdc = sellerWallet?.usdc == null ? null : Number(sellerWallet.usdc).toFixed(2);
-  $("sellerSub").textContent = sellerUsdc == null
-    ? `Agent Wallet · ${sellerWallet?.address || "unassigned"}`
-    : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`;
-  $("buyerPopover").innerHTML = kvHtml("SHOPPING AGENT · ERC-8004", {
-    Name: identities.buyer.name || "Shopping Agent",
-    Token: identities.buyer.scanUrl
-      ? { href: identities.buyer.scanUrl, label: `#${identities.buyer.agentId}` }
-      : `#${identities.buyer.agentId}`,
-    Character: identities.buyer.character || "missing",
-    Why: identities.buyer.characterDetail || "—",
-    Identity: identities.buyer.identityVerified ? "live" : "missing",
-    Active: identities.buyer.isActive ? "yes" : "no",
-    Publisher: identities.buyer.publisherVerified ? "verified" : "unverified",
-    Source: identities.buyer.source || "adapter",
-    x402: identities.buyer.x402Supported ? "yes" : "no",
-    Feedback: identities.buyer.reputationSignals,
-    Validations: identities.buyer.validationSignals,
-  }) + scanLink(identities.buyer.scanUrl);
-  $("sellerPopover").innerHTML = kvHtml("MERCHANT AGENT · ERC-8004", {
-    Name: identities.seller.name || "Merchant Agent",
-    Token: identities.seller.scanUrl
-      ? { href: identities.seller.scanUrl, label: `#${identities.seller.agentId}` }
-      : `#${identities.seller.agentId}`,
-    Character: identities.seller.character || "missing",
-    Why: identities.seller.characterDetail || "—",
-    Identity: identities.seller.identityVerified ? "live" : "missing",
-    Active: identities.seller.isActive ? "yes" : "no",
-    Publisher: identities.seller.publisherVerified ? "verified" : "unverified",
-    Source: identities.seller.source || "adapter",
-    x402: identities.seller.x402Supported ? "yes" : "no",
-    Feedback: identities.seller.reputationSignals,
-    Validations: identities.seller.validationSignals,
-  }) + scanLink(identities.seller.scanUrl);
-  await refreshReceipts();
-  await refreshLedger();
-  renderWalletPop("buyer");
-  renderWalletPop("seller");
+  if ($("sellerSub")) {
+    $("sellerSub").textContent = sellerUsdc == null
+      ? `Agent Wallet · ${sellerWallet?.address || "unassigned"}`
+      : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`;
+  }
+  try {
+    await refreshReceipts();
+    await refreshLedger();
+    renderWalletPop("buyer");
+    renderWalletPop("seller");
+  } catch {
+    /* identity sheets already rendered */
+  }
 }
 
-document.querySelectorAll(".popover, .wallet-sheet, .profile-sheet").forEach((el) => {
-  el.addEventListener("click", (e) => {
-    const link = e.target.closest("a[href]");
-    if (link) {
-      e.stopPropagation();
+const POP_SHEET = {
+  buyerProfileWrap: "buyerPopover",
+  sellerProfileWrap: "sellerPopover",
+  buyerWalletWrap: "buyerWalletPop",
+  sellerWalletWrap: "sellerWalletPop",
+};
+
+function closeAllPops() {
+  document.querySelectorAll(".pop-wrap, .profile-sheet, .wallet-sheet").forEach((el) => {
+    el.classList.remove("open");
+  });
+}
+
+function openPop(wrapId) {
+  closeAllPops();
+  $(wrapId)?.classList.add("open");
+  const sheetId = POP_SHEET[wrapId];
+  if (sheetId) $(sheetId)?.classList.add("open");
+}
+
+document.addEventListener("click", async (e) => {
+  const opener = e.target.closest("[data-open-pop]");
+  if (opener) {
+    e.preventDefault();
+    e.stopPropagation();
+    const wrapId = opener.getAttribute("data-open-pop");
+    const already = $(wrapId)?.classList.contains("open");
+    if (already) {
+      closeAllPops();
       return;
     }
-    e.stopPropagation();
-  });
-});
-document.querySelectorAll(".pop-wrap").forEach((wrap) => {
-  wrap.querySelector("button").addEventListener("click", async (e) => {
-    e.stopPropagation();
-    const open = wrap.classList.contains("open");
-    document.querySelectorAll(".pop-wrap").forEach((w) => w.classList.remove("open"));
-    if (!open) {
-      wrap.classList.add("open");
-      if (wrap.id === "buyerWalletWrap" || wrap.id === "sellerWalletWrap") {
-        await refreshReceipts();
-        renderWalletPop(wrap.id === "buyerWalletWrap" ? "buyer" : "seller");
-      }
+    openPop(wrapId);
+    if (wrapId === "buyerWalletWrap" || wrapId === "sellerWalletWrap") {
+      await refreshReceipts().catch(() => {});
+      renderWalletPop(wrapId === "buyerWalletWrap" ? "buyer" : "seller");
     }
-  });
-});
-document.addEventListener("click", () => {
-  document.querySelectorAll(".pop-wrap").forEach((w) => w.classList.remove("open"));
+    return;
+  }
+  if (e.target.closest("a[href], .profile-sheet, .wallet-sheet, .popover")) return;
+  closeAllPops();
 });
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => setSellerTab(btn.dataset.tab));
@@ -1145,25 +1175,18 @@ async function runTourStep({ step, total, title, body, target, nextLabel = "Next
   }
 }
 
-function closeAllPops() {
-  document.querySelectorAll(".pop-wrap").forEach((w) => w.classList.remove("open"));
-}
-
 async function openBuyerProfile() {
-  closeAllPops();
-  $("buyerProfileWrap")?.classList.add("open");
+  openPop("buyerProfileWrap");
 }
 
 async function openSellerProfile() {
-  closeAllPops();
-  $("sellerProfileWrap")?.classList.add("open");
+  openPop("sellerProfileWrap");
 }
 
 async function openBuyerWallet() {
-  closeAllPops();
-  await refreshReceipts();
+  openPop("buyerWalletWrap");
+  await refreshReceipts().catch(() => {});
   renderWalletPop("buyer");
-  $("buyerWalletWrap")?.classList.add("open");
 }
 
 async function startLedgerTutorial() {
