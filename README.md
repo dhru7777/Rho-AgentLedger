@@ -1,6 +1,6 @@
 # AgentLedger
 
-Financial observability for autonomous commerce agents. Built for **LOCK IN Hack** (Rho, Sep 12–13 2026) — Best Use of the Rho API.
+Financial observability for autonomous commerce agents. Built for **LOCK IN Hack** 
 
 Commerce platforms report what was sold. Rho reports what actually settled. AgentLedger joins the two feeds per agent and answers: **which agent should I trust with more money?**
 
