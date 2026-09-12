@@ -15,16 +15,8 @@ Today every agent payment is prepaid. Rho turns observed cash into a 4C credit f
 | **Live scorecard** | [web-production-eeef3.up.railway.app/ledger](https://web-production-eeef3.up.railway.app/ledger) |
 | **Live architecture** | [web-production-eeef3.up.railway.app/architecture](https://web-production-eeef3.up.railway.app/architecture) |
 | **4Cs presentation (Canva)** | [canva.link/zc8k9kynpnxexvi](https://canva.link/zc8k9kynpnxexvi) |
-| **Local demo** | [http://127.0.0.1:5180](http://127.0.0.1:5180) |
-| **Local scorecard** | [http://127.0.0.1:5180/ledger](http://127.0.0.1:5180/ledger) |
-| **Local architecture** | [http://127.0.0.1:5180/architecture](http://127.0.0.1:5180/architecture) |
-| **Commerce rails (AgentARC)** | [github.com/ysbobde2002/AgentARC](https://github.com/ysbobde2002/AgentARC) |
-| **AgentARC live demo** | [agentarc-production.up.railway.app](https://agentarc-production.up.railway.app) |
-| **AgentARC architecture** | [agentarc-production.up.railway.app/architecture](https://agentarc-production.up.railway.app/architecture) |
 | **Buyer identity (ERC-8004)** | [testnet.8004scan.io · #9638](https://testnet.8004scan.io) |
 | **Seller identity (ERC-8004)** | [testnet.8004scan.io · #6832](https://testnet.8004scan.io) |
-| **Arc explorer** | [testnet.arcscan.app](https://testnet.arcscan.app) |
-| **Circle faucet (Arc USDC)** | [faucet.circle.com](https://faucet.circle.com) |
 
 The buyer/seller UI and payment rails are copied from AgentARC (Circle Agent Wallets, x402 nanopayments, AuthCapture). Layers 2–3 — Rho settlements and the 4C scorecard — are new.
 
