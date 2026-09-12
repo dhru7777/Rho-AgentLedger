@@ -13,6 +13,7 @@ const phaseMap = {
   verify: "verify",
   settle: "settle",
   receipt: "receipt",
+  ledger: "ledger",
 };
 
 const CIRCLE_CATEGORIES = [
@@ -245,6 +246,48 @@ async function refreshReceipts() {
   }
 }
 
+function money(cents) {
+  return `$${(Number(cents || 0) / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+let lastScorecard = null;
+
+async function refreshLedger() {
+  try {
+    lastScorecard = await fetch("/api/ledger/scorecard").then((r) => r.json());
+  } catch {
+    lastScorecard = null;
+  }
+  const pill = $("rhoPill");
+  if (pill && lastScorecard) {
+    pill.textContent = lastScorecard.mode === "live" ? "rho · live" : "rho · fixture";
+  }
+  if (lastScorecard?.matches?.length) lightPhase("ledger");
+  if (sellerTab === "ledger") renderLedgerTab();
+}
+
+function renderLedgerTab() {
+  const feed = $("feedSeller");
+  if (!lastScorecard) {
+    feed.innerHTML = `<div class="empty-hint">Loading AgentLedger…</div>`;
+    return;
+  }
+  const winner = lastScorecard.winner?.name || "—";
+  feed.innerHTML = `
+    <div class="merchant-status">${esc(lastScorecard.mode)} · ${esc(lastScorecard.question)}</div>
+    ${(lastScorecard.agents || [])
+      .map(
+        (a) => `<div class="ledger-row">
+          <div class="p-vendor">${esc(a.name)} · trust ${esc(a.trust)}</div>
+          <div class="p-title">${money(a.revenueCents)} rev · ${money(a.costCents)} cost · ${esc(a.roi)}x ROI</div>
+          <div class="p-price">${esc(a.question)}</div>
+        </div>`,
+      )
+      .join("")}
+    <div class="empty-hint">Winner: ${esc(winner)}. Open Scorecard for the full join.</div>
+  `;
+}
+
 function fillCategories() {
   const row = $("categoryRow");
   row.innerHTML = CIRCLE_CATEGORIES.map(
@@ -261,6 +304,12 @@ function setSellerTab(tab, opts = {}) {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
   $("categoryRow").hidden = true;
+  if (tab === "ledger") {
+    $("sellerName").textContent = "AgentLedger";
+    $("sellerSub").textContent = lastScorecard?.mode === "live" ? "Rho live settlements" : "Rho fixture feed";
+    if (!opts.skipRender) renderLedgerTab();
+    return;
+  }
   $("sellerName").textContent = tab === "shopify" ? "Shopify Agent" : "Arc x402 seller";
   if (!opts.skipRender) return renderSellerCatalog(opts);
 }
@@ -273,6 +322,7 @@ function highlightRow(row) {
 async function renderSellerCatalog(opts = {}) {
   const feed = $("feedSeller");
   const items = sellerTab === "shopify" ? lastCatalog.shopify : lastCatalog.digital;
+  if (sellerTab === "ledger") return renderLedgerTab();
   if (!items?.length) {
     feed.innerHTML = `<div class="empty-hint">${sellerTab === "shopify" ? "Waiting on ARC Agent" : "Pick a category or ask ARC Agent"}</div>`;
     return;
@@ -478,9 +528,10 @@ async function loadIdentities() {
     Source: identities.seller.source || "adapter",
     x402: identities.seller.x402Supported ? "yes" : "no",
     Feedback: identities.seller.reputationSignals,
-    Validations: identities.seller.validationSignals,
+    Validations:   identities.seller.validationSignals,
   }) + scanLink(identities.seller.scanUrl);
   await refreshReceipts();
+  await refreshLedger();
   renderWalletPop("buyer");
   renderWalletPop("seller");
 }
@@ -706,6 +757,7 @@ function showReceipt(result) {
     Tx: result.receipt.paymentTxHash,
     Mode: result.receipt.paymentMode,
   });
+  refreshLedger();
 }
 
 function closeDeliveryModal() {

@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AgentARC · Buyer × Shopify × Digital</title>
+  <title>AgentLedger · Buyer × Shopify × Rho</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=arch16" />
+  <link rel="stylesheet" href="/styles.css?v=ledger1" />
 </head>
 <body>
   <header class="header">
     <a class="brand" href="/">
-      <span class="coin" aria-hidden="true">A</span>
-      <div class="brand-name">AgentARC</div>
+      <span class="coin" aria-hidden="true">L</span>
+      <div class="brand-name">AgentLedger</div>
     </a>
     <div class="phases" id="phases">
       <div class="phase-step" data-phase="intent"><div class="phase-dot"></div><div class="phase-label">intent</div></div>
@@ -31,7 +31,10 @@
       <div class="phase-step" data-phase="settle"><div class="phase-dot"></div><div class="phase-label">settle</div></div>
       <div class="phase-connector"></div>
       <div class="phase-step" data-phase="receipt"><div class="phase-dot"></div><div class="phase-label">receipt</div></div>
+      <div class="phase-connector"></div>
+      <div class="phase-step" data-phase="ledger"><div class="phase-dot"></div><div class="phase-label">ledger</div></div>
     </div>
+    <span class="mode-pill" id="rhoPill">rho · fixture</span>
     <span class="mode-pill" id="modePill">adapter</span>
   </header>
 
@@ -54,10 +57,10 @@
           </div>
           <div class="imessage-nav">
             <div class="pop-wrap" id="buyerProfileWrap">
-              <button type="button" class="arc-avatar" title="ARC Agent profile">A</button>
+              <button type="button" class="arc-avatar" title="Ledger agent profile">L</button>
             </div>
             <div class="imessage-meta">
-              <div class="imessage-name">ARC Agent</div>
+              <div class="imessage-name">Ledger Agent</div>
               <div class="imessage-sub" id="buyerSub">Circle Agent Wallet</div>
             </div>
             <div class="pop-wrap" id="buyerWalletWrap">
@@ -77,7 +80,7 @@
             <button type="button" class="prompt-chip" data-q="Buy the ETH research memo. Spend up to $150">ETH memo</button>
           </div>
           <form class="composer" id="form">
-            <input id="q" placeholder="Message ARC Agent" autocomplete="off" />
+            <input id="q" placeholder="Message Ledger Agent" autocomplete="off" />
             <button type="submit" aria-label="Send">↑</button>
           </form>
           <div class="home-ind" aria-hidden="true"></div>
@@ -106,6 +109,7 @@
       <div class="seller-tabs">
         <button type="button" class="tab-btn active" data-tab="shopify">Shopify UCP</button>
         <button type="button" class="tab-btn" data-tab="digital">Arc x402</button>
+        <button type="button" class="tab-btn" data-tab="ledger">Ledger</button>
       </div>
       <div class="category-row" id="categoryRow" hidden></div>
       <div class="feed" id="feedSeller">
@@ -118,6 +122,7 @@
     <div class="footer-actions">
       <button type="button" class="arch-btn" id="tutorialBtn">Tutorial</button>
       <a class="arch-btn" href="/architecture">Architecture</a>
+      <a class="arch-btn" href="/ledger">Scorecard</a>
     </div>
     <div class="fail-row">
       <label class="fail-toggle">
@@ -151,6 +156,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=arch10"></script>
+  <script src="/app.js?v=ledger1"></script>
 </body>
 </html>

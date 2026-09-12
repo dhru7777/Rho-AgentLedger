@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scorecard · AgentLedger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=ledger1" />
+</head>
+<body class="arch-body">
+  <header class="nav">
+    <a class="logo" href="/">
+      <span class="coin" aria-hidden="true">L</span>
+      <span class="logo-text">AgentLedger</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/">Demo</a>
+      <a href="/architecture">Architecture</a>
+      <a href="/ledger">Scorecard</a>
+    </nav>
+    <div class="nav-right">
+      <span class="mode-pill" id="rhoPill">rho · fixture</span>
+      <span class="mode-pill" id="modePill">adapter</span>
+    </div>
+  </header>
+
+  <main class="page arch-page ledger-page">
+    <p class="eyebrow" id="feedMode">Layer 3 · intelligence</p>
+    <h1 class="arch-title">Which agent should I trust with more money?</h1>
+    <p id="winnerLine" class="eyebrow">Joining commerce orders to Rho settlements.</p>
+
+    <div class="score-grid" id="scoreGrid"></div>
+
+    <h2 class="arch-h2">Order ↔ Rho join</h2>
+    <table class="join-table" id="joinTable">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Order</th>
+          <th>Amount</th>
+          <th>Match</th>
+          <th>Rho id</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <script>
+    const money = (cents) =>
+      "$" + (Number(cents || 0) / 100).toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+    async function load() {
+      const [score, health] = await Promise.all([
+        fetch("/api/ledger/scorecard").then((r) => r.json()),
+        fetch("/api/health").then((r) => r.json()),
+      ]);
+      document.getElementById("modePill").textContent = health.paymentMode || "adapter";
+      document.getElementById("rhoPill").textContent = score.mode === "live" ? "rho · live" : "rho · fixture";
+      document.getElementById("feedMode").textContent =
+        `${score.mode} Rho feed · ${score.rhoCount} settlements`;
+      if (score.winner) {
+        document.getElementById("winnerLine").textContent =
+          `${score.winner.name} leads at trust ${score.winner.trust}. ${score.question}`;
+      }
+      const grid = document.getElementById("scoreGrid");
+      grid.innerHTML = (score.agents || [])
+        .map((a) => `
+          <article class="score-card ${score.winner?.agentId === a.agentId ? "win" : ""}">
+            <div class="score-kicker">${a.question}</div>
+            <div class="score-name">${a.name}</div>
+            <div class="score-metric"><span>Revenue</span><strong>${money(a.revenueCents)}</strong></div>
+            <div class="score-metric"><span>Cost</span><strong>${money(a.costCents)}</strong></div>
+            <div class="score-metric"><span>ROI</span><strong>${a.roi}x</strong></div>
+            <div class="score-trust">${a.trust}</div>
+          </article>`)
+        .join("");
+      const body = document.querySelector("#joinTable tbody");
+      body.innerHTML = (score.matches || [])
+        .map((row) => `<tr>
+          <td>${row.agentId}</td>
+          <td>${row.title}</td>
+          <td>${money(row.amountCents)}</td>
+          <td>${row.kind}</td>
+          <td>${row.rhoId || "—"}</td>
+        </tr>`)
+        .join("");
+    }
+    load().catch(() => {
+      document.getElementById("modePill").textContent = "offline";
+    });
+  </script>
+</body>
+</html>
