@@ -391,7 +391,7 @@ function renderIdentity() {
       <button type="button" class="rho-tab ${identFilter === "buyer" ? "active" : ""}" data-ident="buyer">Shopping Agent</button>
       <button type="button" class="rho-tab ${identFilter === "seller" ? "active" : ""}" data-ident="seller">Merchant Agent</button>
     </div>
-    <p class="rho-lede">Character is live ERC-8004 feedback and validations. It is not a single trust score.</p>
+    <p class="rho-lede">Character is live ERC-8004 feedback and validations.</p>
     <div class="rho-ident-grid">
       ${showBuyer ? identCard("buyer", ids.buyer, (score.credit || []).find((a) => a.agentId === "sales")?.fico) : ""}
       ${showSeller ? identCard("seller", ids.seller, score.merchant?.fico) : ""}

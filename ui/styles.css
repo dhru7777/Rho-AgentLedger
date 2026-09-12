@@ -689,10 +689,14 @@ body.arch-body {
 }
 .arch-pair {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px 16px;
   align-items: start;
   margin: 0 0 8px;
+}
+
+.arch-pair .arch-col {
+  min-width: 0;
 }
 .arch-pair .arch-h2 { margin-top: 0; }
 .arch-pair .arch-board { margin: 0; }
@@ -725,9 +729,9 @@ body.arch-body {
   overscroll-behavior: contain;
 }
 .arch-pair .arch-viewport {
-  height: auto;
-  min-height: 280px;
-  max-height: min(520px, calc(100dvh - 280px));
+  height: 480px;
+  min-height: 0;
+  max-height: none;
 }
 .arch-board-compact .arch-viewport {
   height: 280px;

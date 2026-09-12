@@ -26,7 +26,22 @@
   </header>
 
   <main class="page arch-page">
-    <h1 class="arch-title">Agent payment flow</h1>
+  <h1 class="arch-title">
+    AgentLedger : Agentic payments, financial evidence and scoring
+  </h1>
+
+  <p>
+    - Agents transact through Circle or Stripe. AgentLedger integrates
+    Rho transaction data with commerce records, agent identity and
+    wallet activity to reconcile transactions and calculate prototype
+    agent scores.
+  </p>
+
+  <p>
+    - Rho provides financial transaction data. AgentLedger performs the
+    reconciliation, scoring and visualization. The integration supports
+    live Rho data and locally generated demo records.
+  </p>
 
     <div class="arch-pair">
       <div class="arch-col">
@@ -45,32 +60,40 @@
             <div class="arch-zoom">
               <pre class="mermaid">
 flowchart TD
-  Human["Human"] -->|prompt| UI["ui/app.js"]
-  UI -->|POST /api/turn| Server[":5180
-Circle Wallets"]
-  Server --> Intent["parseIntent"]
-  Intent --> UCP["Shopify UCP"]
-  Intent --> Cat[":5181 catalog
-Arc"]
-  Cat --> Cover{"live ETH?"}
-  Cover -->|no| Reject["Reject unpaid"]
-  Cover -->|yes| Policy["policy.ts"]
-  UCP --> Policy
-  Scan["8004scan"] --> Buyer["buyer #9638"]
-  Scan --> Sid["seller #6832"]
-  Sid --> Policy
-  Policy --> Gate{"Approve?"}
-  Gate -->|no| Stop["Stop"]
-  Gate -->|DIRECT| Nano["HTTP 402
-Nanopayments"]
-  Gate -->|PROTECTED| Escrow["AuthCapture
-Circle Contracts"]
-  Nano --> Verify["verify.ts"]
-  Escrow --> Verify
-  Verify -->|pass| Receipt["Receipt
-Arc · USDC"]
-  Verify -->|fail| Void["Void
-Circle Contracts"]
+  Human["Human"] --> UI["ui/app.js"]
+  UI -->|POST /api/turn| Turn["runTurn<br/>Intent capture and catalog results"]
+  Turn --> UI
+
+  UI -->|POST /api/transactions| Execute["executePurchase<br/>Parse purchase intent"]
+  Execute --> Service["Resolve service<br/>Shopify offer, supplied listing, or local catalog"]
+  Service --> Found{"Service found?"}
+  Found -->|no| NoService["Return rejection"]
+  Found -->|yes| Coverage{"sellerCoversIntent"}
+  Coverage -->|false| Unsupported["REJECTED receipt<br/>No payment"]
+  Coverage -->|true| Policy["evaluatePolicy"]
+  Trust["Seller identity and recent failures"] --> Policy
+  Policy --> Approved{"APPROVE?"}
+  Approved -->|no| Rejected["REJECTED receipt<br/>No payment"]
+  Approved -->|yes| Rail{"paymentRail"}
+
+  Rail -->|fiat| Fiat["Stripe payment path"]
+  Rail -->|crypto| Method{"policy.rail"}
+  Method -->|DIRECT| Direct["paySellerX402"]
+  Method -->|PROTECTED| Protected["Authorize escrow"]
+
+  Fiat --> Handling["Response verification<br/>and branch-specific receipt handling"]
+  Direct --> Handling
+  Protected --> Handling
+  Handling --> Receipts["buildReceipt"]
+  Receipts -->|SUCCESS and positive amount| Orders["Commerce order<br/>and generated demo settlement"]
+  Receipts -->|SUCCESS or HELD| History["Local activity store"]
+
+  Orders --> Ledger["Ledger data and scoring"]
+  History --> Ledger
+  Rho["Rho transaction feed<br/>through src/rho/client.ts"] --> Ledger
+  Identity["Buyer and seller identity signals"] --> Ledger
+  Wallets["Wallet balance inputs"] --> Ledger
+  Ledger --> Scorecard["/ledger"]
               </pre>
             </div>
           </div>
@@ -79,7 +102,7 @@ Circle Contracts"]
       </div>
 
       <div class="arch-col">
-      <h2 class="arch-h2">Two payment rails</h2>
+      <h2 class="arch-h2">Payment execution : crypto and fiat</h2>
       <section class="arch-board" data-fit="width">
         <div class="arch-board-bar">
           <span>Drag or scroll to pan</span>
@@ -94,29 +117,48 @@ Circle Contracts"]
             <div class="arch-zoom arch-zoom-split">
               <pre class="mermaid">
 flowchart TB
-  DH["DIRECT · Nanopayments"] --> G1["GET /charts/ETH
-Arc"]
-  G1 --> P402["HTTP 402
-Nanopayments"]
-  P402 --> Sign["Buyer signs
-Circle Wallets"]
-  Sign --> Retry["PAYMENT-SIGNATURE
-Gateway"]
-  Retry --> Data["CoinGecko payload
-USDC"]
+  Start["Crypto DIRECT<br/>paySellerX402"] --> Sim{"simulateFailure?"}
+
+  Sim -->|yes| Simulated["Call seller with failure flag<br/>Return without sending nanopayment"]
+  Simulated --> Verify["verifyResponse"]
+
+  Sim -->|no| Get["GET seller resource"]
+  Get --> Required{"HTTP 402 and<br/>PAYMENT-REQUIRED present?"}
+  Required -->|no| Error["Throw error<br/>API returns error response"]
+  Required -->|yes| Pay["executeNanopayment<br/>Build payment evidence and header"]
+  Pay --> Retry["Retry GET with PAYMENT-SIGNATURE"]
+  Retry --> Ok{"HTTP 200?"}
+  Ok -->|no| Error
+  Ok -->|yes| Verify
+
+  Verify --> Passed{"verified?"}
+  Passed -->|yes| Success["SUCCESS receipt"]
+  Passed -->|no| Failed["FAILED receipt<br/>Record seller failure"]
               </pre>
               <pre class="mermaid">
 flowchart TB
-  PH["PROTECTED · Circle Contracts"] --> Auth["Authorize USDC
-Circle Wallets"]
-  Auth --> G2["GET /research/ETH
-Arc"]
-  G2 --> V["Verify"]
-  V --> Rec{"received?"}
-  Rec -->|yes| Cap2["Capture
-Circle Contracts"]
-  Rec -->|no| Void2["Void
-Circle Contracts"]
+  Start["Crypto PROTECTED"] --> Auth["authorizeEscrow"]
+  Auth --> Response["Obtain response<br/>Commerce fulfillment helper or seller GET"]
+  Response --> Verify{"verifyResponse passes?"}
+  Verify -->|no| Void["voidEscrow"]
+  Verify -->|yes| Hold["HELD receipt<br/>Save pending run"]
+  Hold --> Wait["Await POST /api/transactions/:id/settle"]
+  Wait --> Received{"received?"}
+  Received -->|true| Capture["captureEscrow"]
+  Received -->|false| Void
+  Capture --> Success["SUCCESS receipt"]
+  Void --> Voided["VOIDED receipt"]
+              </pre>
+              <pre class="mermaid">
+flowchart TB
+  Start["Fiat payment path"] --> Charge["executeStripePayment"]
+  Charge --> Paid{"charged.status is paid?"}
+  Paid -->|no| Failed["FAILED receipt"]
+  Paid -->|yes| Fulfill["Commerce fulfillment helper<br/>or fetchSellerResource"]
+  Fulfill --> Normalize["Convert HTTP 402 response to 200<br/>when present"]
+  Normalize --> Verify["Run verifyResponse"]
+  Verify --> Outcome["Current fiat branch<br/>records seller success"]
+  Outcome --> Receipt["SUCCESS receipt<br/>Includes verification result"]
               </pre>
             </div>
           </div>
@@ -125,7 +167,12 @@ Circle Contracts"]
       </div>
     </div>
 
-    <h2 class="arch-h2">Policy engine</h2>
+    <h2 class="arch-h2">Purchase policy</h2>
+    <p>
+      The policy checks seller identity, the user's spend cap, recent seller
+      failures, price, delivery timing and objectivity. The calculated credit
+      score is not an input to this function.
+    </p>
     <section class="arch-board arch-board-compact" data-fit="width">
       <div class="arch-board-bar">
         <span>Drag or scroll to pan</span>
@@ -140,27 +187,29 @@ Circle Contracts"]
           <div class="arch-zoom">
             <pre class="mermaid">
 flowchart LR
-  Start["evaluatePolicy"] --> Id{"identity?
-ERC-8004"}
-  Id -->|missing| R1["REJECT"]
-  Id -->|ok| Cap{"over spend?
-USDC"}
-  Cap -->|yes| R2["REJECT"]
-  Cap -->|no| Fail{"3 failures?"}
-  Fail -->|yes| R3["REJECT"]
-  Fail -->|no| Big{"100-plus or lagged?"}
-  Big -->|yes| P1["PROTECTED
-Circle Contracts"]
-  Big -->|no| Nano{"1 or less instant?"}
-  Nano -->|yes| D1["DIRECT
-Nanopayments"]
-  Nano -->|no| P2["PROTECTED
-Circle Contracts"]
+  Start["evaluatePolicy"] --> Identity{"Seller identity verified?"}
+  Identity -->|no| Reject["REJECT"]
+  Identity -->|yes| Spend{"Price exceeds maxSpendUsd?"}
+  Spend -->|yes| Reject
+  Spend -->|no| Failures{"recentFailures at least 3?"}
+  Failures -->|yes| Reject
+  Failures -->|no| Protect{"Price at least protectMinUsd<br/>OR subjective result<br/>OR lagged delivery?"}
+  Protect -->|yes| Protected["APPROVE<br/>rail = PROTECTED"]
+  Protect -->|no| Nano{"Price at most nanoMaxUsd<br/>AND instant delivery<br/>AND objective result?"}
+  Nano -->|yes| Direct["APPROVE<br/>rail = DIRECT"]
+  Nano -->|no| Protected
             </pre>
           </div>
         </div>
       </div>
     </section>
+    <p>
+      Configuration defaults : protectMinUsd = $100 and nanoMaxUsd = $1.
+    </p>
+    <p>
+      After approval, fiat purchases use the Stripe branch & crypto purchases
+      use the returned DIRECT or PROTECTED method.
+    </p>
 
     <section class="paper" style="margin-top:28px">
       <div class="paper-head"><strong>Module boundaries</strong></div>
@@ -171,7 +220,7 @@ Circle Contracts"]
   </main>
 
   <footer class="site-foot">
-    <span>AgentARC · high-level design</span>
+    <span>AgentLedger</span>
     <span id="footMode">adapter mode</span>
   </footer>
   <script type="module">
