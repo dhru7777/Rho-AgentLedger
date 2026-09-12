@@ -10,7 +10,6 @@ Today every agent payment is prepaid. Rho turns observed cash into a 4C credit f
 
 | | |
 |---|---|
-| **Repo** | [github.com/dhru7777/Rho-AgentLedger](https://github.com/dhru7777/Rho-AgentLedger) |
 | **Live demo** | [web-production-eeef3.up.railway.app](https://web-production-eeef3.up.railway.app) |
 | **Live scorecard** | [web-production-eeef3.up.railway.app/ledger](https://web-production-eeef3.up.railway.app/ledger) |
 | **Live architecture** | [web-production-eeef3.up.railway.app/architecture](https://web-production-eeef3.up.railway.app/architecture) |
