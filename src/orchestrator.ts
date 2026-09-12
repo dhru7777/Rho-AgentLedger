@@ -600,8 +600,8 @@ export async function settlePurchase(runId: string, received: boolean): Promise<
 export function health() {
   return {
     ok: true,
-    product: "AgentARC · Agent commerce on Arc",
-    tracks: ["Best Agentic Economy Application with Circle Agent Stack"],
+    product: "AgentLedger · financial observability for commerce agents",
+    tracks: ["LOCK IN Hack · Best Use of Rho API"],
     network: config.arc.network,
     chainId: config.arc.chainId,
     caip2: config.arc.caip2,

@@ -9,6 +9,8 @@ import { config, ROOT_DIR, paymentMode } from "../src/config.js";
 import { SERVICES, discoverCatalog, runTurn } from "../src/discovery.js";
 import { discoverMarketplace } from "../src/marketplace.js";
 import { architecture, executePurchase, health, settlePurchase } from "../src/orchestrator.js";
+import { buildScorecard } from "../src/ledger/scorecard.js";
+import { rhoHealth } from "../src/rho/client.js";
 import { getReceipt, listReceipts } from "../src/receipts.js";
 import { loadBuyerTrust, loadSellerTrust } from "../src/trust.js";
 
@@ -250,8 +252,19 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (path === "/api/rho/health" && req.method === "GET") {
+      send(res, 200, await rhoHealth());
+      return;
+    }
+
+    if ((path === "/api/ledger" || path === "/api/ledger/scorecard") && req.method === "GET") {
+      send(res, 200, await buildScorecard());
+      return;
+    }
+
     let file = path === "/" ? "/index.html" : path;
     if (path === "/architecture") file = "/architecture.html";
+    if (path === "/ledger") file = "/ledger.html";
     const disk = join(uiRoot, file.replace(/^\/+/, ""));
     if (!disk.startsWith(uiRoot) || !existsSync(disk)) {
       send(res, 404, { error: "not found" });
@@ -276,6 +289,7 @@ server.listen(config.port, "0.0.0.0", () => {
   console.log(`Buyer / orchestrator    → http://0.0.0.0:${config.port}`);
   console.log(`Arc x402 seller         → http://127.0.0.1:${config.seller.port}`);
   console.log(`Architecture            → http://0.0.0.0:${config.port}/architecture`);
+  console.log(`Agent ledger            → http://0.0.0.0:${config.port}/ledger`);
   console.log(`Payment mode: ${paymentMode()}`);
   console.log(`Network: ${config.arc.name} (${config.arc.caip2})`);
 });

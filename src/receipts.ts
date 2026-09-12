@@ -1,4 +1,5 @@
 import { explorerTx, paymentMode } from "./config.js";
+import { ingestReceipt } from "./ledger/scorecard.js";
 import type { Outcome, PaymentEvidence, Receipt, Rail, VerificationResult } from "./types.js";
 
 const receipts = new Map<string, Receipt>();
@@ -46,6 +47,7 @@ export function buildReceipt(input: {
     explorerUrl: explorerTx(paymentTxHash),
   };
   receipts.set(receipt.id, receipt);
+  ingestReceipt(receipt);
   return receipt;
 }
 
