@@ -93,6 +93,11 @@ export const config = {
     apiKey: process.env.OPENAI_API_KEY || "",
     model: process.env.OPENAI_MODEL || "gpt-4o-mini",
   },
+  rho: {
+    token: process.env.RHO_API_TOKEN || "",
+    base: process.env.RHO_API_BASE || "https://rhoapi.rho.co/api/v1",
+    accountId: process.env.RHO_ACCOUNT_ID || "",
+  },
 };
 
 export function paymentMode(): "circle" | "adapter" {
