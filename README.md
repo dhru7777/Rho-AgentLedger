@@ -263,6 +263,3 @@ npm run typecheck
 
 ---
 
-## Acknowledgments
-
-Commerce rails from [AgentARC](https://github.com/ysbobde2002/AgentARC). Rho is the settlement spine that turns those rails into a credit file.
