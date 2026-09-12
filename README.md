@@ -13,7 +13,7 @@ Today every agent payment is prepaid. Rho turns observed cash into a 4C credit f
 | **Live demo** | [web-production-eeef3.up.railway.app](https://web-production-eeef3.up.railway.app) |
 | **Live scorecard** | [web-production-eeef3.up.railway.app/ledger](https://web-production-eeef3.up.railway.app/ledger) |
 | **Live architecture** | [web-production-eeef3.up.railway.app/architecture](https://web-production-eeef3.up.railway.app/architecture) |
-| **4Cs presentation (Canva)** | [canva.link/zc8k9kynpnxexvi](https://canva.link/zc8k9kynpnxexvi) |
+| **4Cs presentation (Canva)** | [canva.link/zc8k9kynpnxexvi](https://canva.link/cnxz7ms111evfi3) |
 | **Buyer identity (ERC-8004)** | [testnet.8004scan.io · #9638](https://testnet.8004scan.io) |
 | **Seller identity (ERC-8004)** | [testnet.8004scan.io · #6832](https://testnet.8004scan.io) |
 
