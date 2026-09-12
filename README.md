@@ -257,11 +257,6 @@ npm run typecheck
 
 ---
 
-## Env
-
-Copy `.env.example`. Nothing is required to boot.
-
-
 ## API
 
 | Method | Path | |
