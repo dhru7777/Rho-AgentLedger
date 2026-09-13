@@ -1,4 +1,8 @@
 const $ = (id) => document.getElementById(id);
+const setText = (id, value) => {
+  const el = typeof id === "string" ? $(id) : id;
+  if (el) el.textContent = value;
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -47,6 +51,7 @@ function lightPhase(id, failed) {
 }
 function setRail(policy, payment) {
   const badge = $("railBadge");
+  if (!badge) return;
   badge.className = "rail-badge";
   if (!policy) {
     badge.textContent = "rail · idle";
@@ -282,6 +287,7 @@ function fiatWalletHtml(data, role) {
 
 function renderWalletPop(role) {
   const el = role === "buyer" ? $("buyerWalletPop") : $("sellerWalletPop");
+  if (!el) return;
   const cryptoId = `wtab-crypto-${role}`;
   const fiatId = `wtab-fiat-${role}`;
   el.innerHTML = `
@@ -291,31 +297,37 @@ function renderWalletPop(role) {
     </div>
     <div id="${cryptoId}"><div class="tx-empty">Loading ArcScan…</div></div>
     <div id="${fiatId}" hidden><div class="tx-empty">Loading Stripe…</div></div>`;
+  const paint = (id, html) => {
+    const box = $(id);
+    if (box) box.innerHTML = html;
+  };
   fetch(`/api/wallet/${role}/crypto`)
     .then((r) => r.json())
-    .then((data) => { $(cryptoId).innerHTML = cryptoWalletHtml(data, role); })
-    .catch((err) => { $(cryptoId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`; });
+    .then((data) => paint(cryptoId, cryptoWalletHtml(data, role)))
+    .catch((err) => paint(cryptoId, `<div class="tx-empty">${esc(err.message || err)}</div>`));
   el.querySelectorAll(".wallet-tab-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const tab = btn.dataset.tab;
       el.querySelectorAll(".wallet-tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-      $(cryptoId).hidden = tab !== "crypto";
-      $(fiatId).hidden = tab !== "fiat";
+      const cryptoBox = $(cryptoId);
+      const fiatBox = $(fiatId);
+      if (cryptoBox) cryptoBox.hidden = tab !== "crypto";
+      if (fiatBox) fiatBox.hidden = tab !== "fiat";
       if (tab === "fiat") {
         try {
           const data = await fetch(`/api/wallet/${role}/fiat`).then((r) => r.json());
-          $(fiatId).innerHTML = fiatWalletHtml(data, role);
+          paint(fiatId, fiatWalletHtml(data, role));
         } catch (err) {
-          $(fiatId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`;
+          paint(fiatId, `<div class="tx-empty">${esc(err.message || err)}</div>`);
         }
       }
       if (tab === "crypto") {
         try {
           const data = await fetch(`/api/wallet/${role}/crypto`).then((r) => r.json());
-          $(cryptoId).innerHTML = cryptoWalletHtml(data, role);
+          paint(cryptoId, cryptoWalletHtml(data, role));
         } catch (err) {
-          $(cryptoId).innerHTML = `<div class="tx-empty">${esc(err.message || err)}</div>`;
+          paint(cryptoId, `<div class="tx-empty">${esc(err.message || err)}</div>`);
         }
       }
     });
@@ -401,6 +413,7 @@ async function refreshLedger() {
 
 function renderLedgerTab() {
   const feed = $("feedSeller");
+  if (!feed) return;
   if (!lastScorecard) {
     feed.innerHTML = `<div class="empty-hint">Loading AgentLedger…</div>`;
     return;
@@ -421,6 +434,7 @@ function renderLedgerTab() {
 
 function fillCategories() {
   const row = $("categoryRow");
+  if (!row) return;
   row.innerHTML = CIRCLE_CATEGORIES.map(
     (c) => `<button type="button" class="cat-chip" data-cat="${c.id}">${esc(c.label)}</button>`,
   ).join("");
@@ -434,14 +448,15 @@ function setSellerTab(tab, opts = {}) {
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
-  $("categoryRow").hidden = true;
+  const cats = $("categoryRow");
+  if (cats) cats.hidden = true;
   if (tab === "ledger") {
-    $("sellerName").textContent = "AgentLedger";
-    $("sellerSub").textContent = lastScorecard?.mode === "live" ? "Rho live settlements" : "Rho fixture feed";
+    setText("sellerName", "AgentLedger");
+    setText("sellerSub", lastScorecard?.mode === "live" ? "Rho live settlements" : "Rho fixture feed");
     if (!opts.skipRender) renderLedgerTab();
     return;
   }
-  $("sellerName").textContent = tab === "shopify" ? "Shopify Agent" : "Arc x402 seller";
+  setText("sellerName", tab === "shopify" ? "Shopify Agent" : "Arc x402 seller");
   if (!opts.skipRender) return renderSellerCatalog(opts);
 }
 
@@ -587,13 +602,14 @@ function askApproval() {
     $("feedBuyer"),
     `<div>Pay <b>${esc(title)}</b> (${esc(kind === "shopify" ? `$${price.toFixed(2)}` : fmtUsd(price))}) from which wallet?</div>
      <div class="approve-row">
-       <button type="button" class="approve-btn" data-rail="crypto">Crypto · USDC</button>
-       <button type="button" class="approve-btn" data-rail="fiat">Fiat · Stripe</button>
+       <button type="button" class="approve-btn" data-rail="crypto"><span>Crypto</span><strong>USDC</strong></button>
+       <button type="button" class="approve-btn" data-rail="fiat"><span>Fiat</span><strong>Stripe</strong></button>
        <button type="button" class="approve-btn reject" data-decision="reject">Reject</button>
      </div>`,
     "inc",
     "human",
   );
+  wrap.querySelector(".bubble")?.classList.add("pay");
   wrap.querySelectorAll(".approve-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       wrap.querySelectorAll(".approve-btn").forEach((b) => (b.disabled = true));
@@ -632,35 +648,35 @@ async function browseCategory(category) {
 }
 
 async function loadIdentities() {
-  renderIdentitySheet("buyer", identities?.buyer || null);
-  renderIdentitySheet("seller", identities?.seller || null);
-  const res = await fetch("/api/identities");
-  identities = await res.json();
-  if ($("modePill")) $("modePill").textContent = identities.paymentMode || "adapter";
-  renderIdentitySheet("buyer", identities.buyer);
-  renderIdentitySheet("seller", identities.seller);
-  const buyerWallet = identities.wallets?.buyer;
-  const sellerWallet = identities.wallets?.seller;
-  const buyerUsdc = buyerWallet?.usdc == null ? null : Number(buyerWallet.usdc).toFixed(2);
-  if ($("buyerSub")) $("buyerSub").textContent = buyerUsdc == null ? "Circle Agent Wallet" : `${buyerUsdc} USDC`;
-  if ($("buyerWalletChip")) {
-    $("buyerWalletChip").textContent = buyerUsdc == null
-      ? shortAddr(buyerWallet?.address)
-      : `${buyerUsdc} · ${shortAddr(buyerWallet?.address)}`;
-  }
-  const sellerUsdc = sellerWallet?.usdc == null ? null : Number(sellerWallet.usdc).toFixed(2);
-  if ($("sellerSub")) {
-    $("sellerSub").textContent = sellerUsdc == null
-      ? `Agent Wallet · ${sellerWallet?.address || "unassigned"}`
-      : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`;
-  }
   try {
+    renderIdentitySheet("buyer", identities?.buyer || null);
+    renderIdentitySheet("seller", identities?.seller || null);
+    const res = await fetch("/api/identities");
+    identities = await res.json();
+    setText("modePill", identities.paymentMode || "adapter");
+    renderIdentitySheet("buyer", identities.buyer);
+    renderIdentitySheet("seller", identities.seller);
+    const buyerWallet = identities.wallets?.buyer;
+    const sellerWallet = identities.wallets?.seller;
+    const buyerUsdc = buyerWallet?.usdc == null ? null : Number(buyerWallet.usdc).toFixed(2);
+    setText("buyerSub", buyerUsdc == null ? "Circle Agent Wallet" : `${buyerUsdc} USDC`);
+    setText(
+      "buyerWalletChip",
+      buyerUsdc == null ? shortAddr(buyerWallet?.address) : `${buyerUsdc} · ${shortAddr(buyerWallet?.address)}`,
+    );
+    const sellerUsdc = sellerWallet?.usdc == null ? null : Number(sellerWallet.usdc).toFixed(2);
+    setText(
+      "sellerSub",
+      sellerUsdc == null
+        ? `Agent Wallet · ${sellerWallet?.address || "unassigned"}`
+        : `${sellerUsdc} USDC · ${sellerWallet?.address || "unassigned"}`,
+    );
     await refreshReceipts();
     await refreshLedger();
     renderWalletPop("buyer");
     renderWalletPop("seller");
-  } catch {
-    /* identity sheets already rendered */
+  } catch (err) {
+    console.warn("identities", err);
   }
 }
 
@@ -963,7 +979,7 @@ async function settleDelivery(runId, received) {
     showReceipt(result);
     await loadIdentities();
   } catch (err) {
-    addBubble($("feedBuyer"), "sys", String(err));
+    console.warn("settle", err);
   }
   playing = false;
   $("form").querySelector("button").disabled = false;
@@ -994,7 +1010,7 @@ async function runTransaction(prompt, extra = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
-        simulateFailure: $("failToggle").checked,
+        simulateFailure: Boolean($("failToggle")?.checked),
         maxSpendUsd: extra.maxSpendUsd,
         shopifyOffer: extra.shopifyOffer,
         marketplaceListing: extra.marketplaceListing,
@@ -1015,44 +1031,49 @@ async function runTransaction(prompt, extra = {}) {
     return;
   }
 
-  lightStages(result);
-  if (result.policy) {
-    const stripe = result.payment?.scheme === "stripe";
-    const rail = stripe ? "Stripe" : result.policy.rail === "DIRECT" ? "Nanopayment" : "Escrow";
-    addCollapseCard(
-      $("feedBuyer"),
-      "Policy",
-      `${result.policy.decision} · ${rail}`,
-      {
-        Decision: result.policy.decision,
-        Rail: stripe ? "Stripe test Visa ···4242" : result.policy.rail === "DIRECT" ? "Nanopayment" : "AuthCapture escrow",
-      },
-      { listLabel: "Why", list: result.policy.reasons },
-    );
-  }
-  if (result.policy?.decision === "REJECT") {
-    addBubble($("feedBuyer"), "sys", paymentCopy(result));
+  try {
+    lightStages(result);
+    if (result.policy) {
+      const stripe = result.payment?.scheme === "stripe";
+      const rail = stripe ? "Stripe" : result.policy.rail === "DIRECT" ? "Nanopayment" : "Escrow";
+      addCollapseCard(
+        $("feedBuyer"),
+        "Policy",
+        `${result.policy.decision} · ${rail}`,
+        {
+          Decision: result.policy.decision,
+          Rail: stripe ? "Stripe test Visa ···4242" : result.policy.rail === "DIRECT" ? "Nanopayment" : "AuthCapture escrow",
+        },
+        { listLabel: "Why", list: result.policy.reasons },
+      );
+    }
+    if (result.policy?.decision === "REJECT") {
+      addBubble($("feedBuyer"), "sys", paymentCopy(result));
+      showReceipt(result);
+      await loadIdentities();
+      playing = false;
+      $("form")?.querySelector("button") && ($("form").querySelector("button").disabled = false);
+      sessionId = null;
+      return;
+    }
+    if (result.payment) addBubble($("feedBuyer"), "inc", paymentCopy(result), "ARC Agent");
+    showDeliverable(result);
+    showVerification(result);
+    if (result.awaitingDelivery) {
+      showReceipt(result);
+      await sleep(tourActive ? 4500 : 2500);
+      askDelivery(result);
+      await loadIdentities();
+      return;
+    }
     showReceipt(result);
     await loadIdentities();
-    playing = false;
-    $("form").querySelector("button").disabled = false;
-    sessionId = null;
-    return;
+  } catch (err) {
+    console.warn("pay ui", err);
   }
-  if (result.payment) addBubble($("feedBuyer"), "inc", paymentCopy(result), "ARC Agent");
-  showDeliverable(result);
-  showVerification(result);
-  if (result.awaitingDelivery) {
-    showReceipt(result);
-    await sleep(tourActive ? 4500 : 2500);
-    askDelivery(result);
-    await loadIdentities();
-    return;
-  }
-  showReceipt(result);
-  await loadIdentities();
   playing = false;
-  $("form").querySelector("button").disabled = false;
+  const send = $("form")?.querySelector("button");
+  if (send) send.disabled = false;
   sessionId = null;
 }
 
@@ -1323,6 +1344,4 @@ window.addEventListener("resize", () => {
 });
 
 fillCategories();
-loadIdentities().catch(() => {
-  if ($("modePill")) $("modePill").textContent = "offline";
-});
+loadIdentities().catch(() => setText("modePill", "offline"));
