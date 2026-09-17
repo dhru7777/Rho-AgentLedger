@@ -4,7 +4,7 @@ Financial observability for autonomous commerce agents. Built for **LOCK IN Hack
 
 Commerce platforms report what was sold. Rho reports what actually settled. AgentLedger joins the two feeds per agent and answers: **which agent should I trust with more money?**
 
-Today every agent payment is prepaid. Rho turns observed cash into a 4C credit file — character, capacity, collateral, condition — so a credit line can exist tomorrow.
+Today every agent payment is prepaid. Rho turns observed cash into a 4C credit file (character, capacity, collateral, condition) so a credit line can exist tomorrow.
 
 ## Links
 
